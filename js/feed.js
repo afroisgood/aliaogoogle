@@ -101,8 +101,7 @@ export function initFeed({ scene, dog }) {
 
   function release() {
     walk = null;
-    dog.rotation.x = 0;
-    dog.position.y = 0;
+    dog.userData.eating = false;
   }
 
   function idle() {
@@ -143,7 +142,6 @@ export function initFeed({ scene, dog }) {
       // 碗裝好了：放回原位，巴福柔走過去
       freeze.visible = true;
       bowl.visible = true;
-      dog.rotation.order = 'YXZ';
       walk = { path: plan(), eat: 0, retry: 0 };
     }
     state.at++;
@@ -170,16 +168,16 @@ export function initFeed({ scene, dog }) {
       let step = DOG_SPEED * dt;
       while (walk.path.length && step > 0) {
         const [tx, tz] = walk.path[0], dx = tx - p.x, dz = tz - p.z, d = Math.hypot(dx, dz);
-        if (d > 0.01) dog.rotation.y = Math.atan2(-dx, -dz);
+        if (d > 0.01) {
+          const want = Math.atan2(-dx, -dz);
+          dog.rotation.y += Math.atan2(Math.sin(want - dog.rotation.y), Math.cos(want - dog.rotation.y)) * Math.min(1, dt * 8);
+        }
         if (d <= step) { p.x = tx; p.z = tz; step -= d; walk.path.shift(); }
         else { p.x += dx / d * step; p.z += dz / d * step; step = 0; }
       }
-      dog.rotation.x = 0;
-      p.y = Math.abs(Math.sin(time * 14)) * 0.02;     // 走路的小跳動
       return;
     }
     if (!atBowl()) {                         // 走不到（被廚房柵欄關在裡面）：在原地等，每秒再試一次
-      p.y = 0;
       if ((walk.retry -= dt) <= 0) {
         walk.retry = 1;
         walk.path = plan();
@@ -188,9 +186,9 @@ export function initFeed({ scene, dog }) {
       return;
     }
     // 到碗前面：頭朝碗低下去吃，飼料慢慢變少
-    p.y = 0;
-    dog.rotation.y = Math.atan2(-(BOWL[0] - p.x), -(BOWL[1] - p.z));
-    dog.rotation.x = -0.32 - Math.abs(Math.sin(time * 7)) * 0.1;
+    const want = Math.atan2(-(BOWL[0] - p.x), -(BOWL[1] - p.z));
+    dog.rotation.y += Math.atan2(Math.sin(want - dog.rotation.y), Math.cos(want - dog.rotation.y)) * Math.min(1, dt * 6);
+    dog.userData.eating = true;             // 低頭吃的動作在 pets.js
     walk.eat += dt;
     const left = Math.max(0, 1 - walk.eat / EAT_TIME);
     kibble.scale.set(Math.max(left, 0.01), 1, Math.max(left, 0.01));

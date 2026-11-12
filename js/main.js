@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { buildLivingRoom, ROOM } from './livingroom.js';
+import { animatePet } from './pets.js';
 import { STYLE, ROOMS } from './kit.js';
 import { walkable, findPath } from './nav.js';
 import { initTasks } from './tasks.js';
@@ -393,7 +394,6 @@ function followLeash(dt, time) {
       else { dp.x += dx / d * step; dp.z += dz / d * step; step = 0; }
     }
   }
-  dp.y = moving ? Math.abs(Math.sin(time * 14)) * 0.02 : 0;
   const dx = fp.x - dp.x, dz = fp.z - dp.z;
   if (!moving && Math.hypot(dx, dz) > 0.3) {     // 停下來時臉朝著人
     const want = Math.atan2(-dx, -dz);
@@ -482,6 +482,7 @@ function frame() {
   flow.update();
   updateCompass(clock.elapsedTime);
   wander.update(dt, clock.elapsedTime);
+  for (const o of [dog, cat, kitten]) animatePet(o, dt, clock.elapsedTime);    // 走路、搖尾巴、趴下等動作
   if (gate.update(dt)) renderer.shadowMap.needsUpdate = true;   // 柵欄轉動中，陰影跟著重算
   // 從廚房走到別的房間時，柵欄還開著就警示
   if (mode !== 'overview' && label) {
