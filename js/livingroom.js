@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { DOG_SIDE, CAT_LOAF } from './pixelart.js';
-import { STYLE, OBSTACLES, WALK, ROOMS, ceilingLight, std, box, wall, wallRun, slab, cyl, ball, sprite, tileTexture, woodTexture, wallTexture } from './kit.js';
+import { STYLE, WARM, OBSTACLES, WALK, ROOMS, ceilingLight, std, box, wall, wallRun, slab, cyl, ball, sprite, tileTexture, woodTexture, wallTexture } from './kit.js';
 import { buildDogRoom, DOGROOM } from './dogroom.js';
 import { buildKitchen, KITCHEN } from './kitchen.js';
 
@@ -398,7 +398,7 @@ export function buildLivingRoom(scene) {
   g.add(cat);
 
   // 燈光：吸頂燈
-  g.add(new THREE.HemisphereLight(0xffffff, 0xb0a890, STYLE.ambient));
+  g.add(new THREE.HemisphereLight(WARM.sky, WARM.ground, STYLE.ambient * WARM.boost));
   ceilingLight(g, -0.2, H - 0.08, 0.2, 9, 2048);
   cyl(g, 0.16, 0.18, 0.06, new THREE.MeshBasicMaterial({ color: 0xfffbea }), -0.2, H - 0.03, 0.2).castShadow = false;
 

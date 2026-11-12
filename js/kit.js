@@ -14,6 +14,16 @@ const STYLES = {
   soft: { h: 0, levels: 0, dither: 0, tonemap: 1, shadows: true, ambient: 1.5, spot: 5.0 },
 };
 const styleName = new URLSearchParams(location.search).get('style');
+
+// 牆面與燈光的色調。網址加上 ?warm=a / b / c 可試看
+const WARMS = {
+  now: { wall: [50, 28, 86], light: 0xfff0d8, sky: 0xffffff, ground: 0xb0a890, boost: 1 },
+  a: { wall: [44, 48, 88], light: 0xffe6bc, sky: 0xfff6e4, ground: 0xd6c4a0, boost: 1.2 },   // 奶油白
+  b: { wall: [39, 62, 83], light: 0xffdba0, sky: 0xfff0d0, ground: 0xdcc090, boost: 1.2 },   // 蜂蜜黃
+  c: { wall: [26, 55, 86], light: 0xffdfc6, sky: 0xfff0e6, ground: 0xdcbca6, boost: 1.2 },   // 蜜桃粉
+};
+export const WARM = WARMS[new URLSearchParams(location.search).get('warm')] || WARMS.now;
+
 export const STYLE = { name: STYLES[styleName] ? styleName : 'pixel', ...(STYLES[styleName] || STYLES.pixel) };
 
 // 第一人稱視角的碰撞方塊 [x1, x2, z1, z2]
@@ -91,7 +101,7 @@ export function woodTexture(base, dark, planks = 1) {
 
 // 牆面：帶顆粒的米白漆
 export function wallTexture() {
-  return canvasTexture(32, (g, s) => speckle(g, s, [50, 28, 86], 7));
+  return canvasTexture(32, (g, s) => speckle(g, s, WARM.wall, 7));
 }
 
 /* ---------- 小工具 ---------- */
@@ -189,7 +199,7 @@ export const ROOMS = [];
 
 // 吸頂燈的光：往下照的聚光燈，reach 是照得到的距離（公尺）
 export function ceilingLight(parent, x, y, z, reach = 8, mapSize = 1024, power = 1) {
-  const spot = new THREE.SpotLight(0xfff0d8, STYLE.spot * power, reach, 1.3, 0.6, 0);
+  const spot = new THREE.SpotLight(WARM.light, STYLE.spot * power, reach, 1.3, 0.6, 0);
   spot.position.set(x, y, z);
   spot.target.position.set(x, 0, z);
   if (STYLE.shadows) {
