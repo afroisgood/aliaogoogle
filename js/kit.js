@@ -15,14 +15,14 @@ const STYLES = {
 };
 const styleName = new URLSearchParams(location.search).get('style');
 
-// 牆面與燈光的色調。網址加上 ?warm=a / b / c 可試看
+// 牆面與燈光的色調。預設為 c（蜜桃粉）；網址加上 ?warm=now / a / b 可比較
 const WARMS = {
   now: { wall: [50, 28, 86], light: 0xfff0d8, sky: 0xffffff, ground: 0xb0a890, boost: 1 },
   a: { wall: [44, 48, 88], light: 0xffe6bc, sky: 0xfff6e4, ground: 0xd6c4a0, boost: 1.2 },   // 奶油白
   b: { wall: [39, 62, 83], light: 0xffdba0, sky: 0xfff0d0, ground: 0xdcc090, boost: 1.2 },   // 蜂蜜黃
   c: { wall: [26, 55, 86], light: 0xffdfc6, sky: 0xfff0e6, ground: 0xdcbca6, boost: 1.2 },   // 蜜桃粉
 };
-export const WARM = WARMS[new URLSearchParams(location.search).get('warm')] || WARMS.now;
+export const WARM = WARMS[new URLSearchParams(location.search).get('warm')] || WARMS.c;
 
 export const STYLE = { name: STYLES[styleName] ? styleName : 'pixel', ...(STYLES[styleName] || STYLES.pixel) };
 
