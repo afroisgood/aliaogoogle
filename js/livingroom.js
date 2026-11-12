@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { DOG_SIDE, CAT_LOAF } from './pixelart.js';
 import { OBSTACLES, WALK, ROOMS, std, box, wall, wallRun, slab, cyl, ball, sprite, tileTexture, woodTexture, wallTexture } from './kit.js';
 import { buildDogRoom, DOGROOM } from './dogroom.js';
+import { buildKitchen, KITCHEN } from './kitchen.js';
 
 // 座標：x 向東（+）、z 向南（+，大門側）、y 向上。單位：公尺。
 // 尺寸為依照片與手繪平面圖估計。
@@ -101,7 +102,7 @@ function buildSouthDoors(room, wallMat) {
   box(g, 0.02, 0.16, 0.04, metal, cx + 0.05, 1.0, z - 0.05);
 }
 
-// 走廊：西側依序是書房、主臥室（尚未建模，門關著）、狗房（可進入）
+// 走廊：西側依序是書房、主臥室（尚未建模，門關著）、狗房（可進入），盡頭是廚房
 function buildCorridor(g, wallMat, tiles) {
   const { x1, x2, len } = CORRIDOR;
   const w = x2 - x1, cx = (x1 + x2) / 2, zEnd = -HD - len, hc = 2.5;
@@ -122,10 +123,9 @@ function buildCorridor(g, wallMat, tiles) {
   const door = std(0x3a2418, { roughness: 0.5 });
   for (const z of [-3.2, -5.0]) box(g, 0.05, 2.0, 0.85, door, x1 + 0.02, 1.0, z);
 
-  // 走廊盡頭：廚房的亮光
-  const glow = new THREE.Mesh(new THREE.PlaneGeometry(w, hc), new THREE.MeshBasicMaterial({ color: 0xf4ead2 }));
-  glow.position.set(cx, hc / 2, zEnd);
-  g.add(glow);
+  // 走廊盡頭：通往廚房的門洞
+  const kd = KITCHEN.door;
+  wallRun(g, wallMat, 'x', zEnd + 0.001, x1, x2, hc, 0, [[kd.x1, kd.x2, kd.h]]);
   const l1 = new THREE.PointLight(0xffe2b0, 0.7, 0, 0);
   l1.position.set(cx, 2.2, -HD - 2.5);
   g.add(l1);
@@ -385,6 +385,7 @@ export function buildLivingRoom(scene) {
   buildCenter(g);
   buildEastAndEntry(g);
   buildDogRoom(g);
+  buildKitchen(g);
 
   // 巴福柔站在沙發後方通往走廊的走道
   const dog = sprite(DOG_SIDE, 0.72);
