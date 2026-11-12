@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>巴福柔照護任務</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script type="importmap">
+    { "imports": { "three": "./vendor/three.module.min.js" } }
+  </script>
+</head>
+<body>
+  <canvas id="scene"></canvas>
+
+  <header id="topbar">
+    <h1>🐾 巴福柔照護任務</h1>
+    <span id="room-name">客廳</span>
+    <button id="tasks-toggle" aria-expanded="false">任務清單</button>
+  </header>
+
+  <aside id="tasks-panel" hidden>
+    <section>
+      <h2>必備任務</h2>
+      <ul id="main-tasks" class="task-list"></ul>
+    </section>
+    <section>
+      <h2>支線任務</h2>
+      <ul id="side-tasks" class="task-list"></ul>
+    </section>
+  </aside>
+
+  <div id="hint"></div>
+
+  <div id="joystick" hidden><div id="stick"></div></div>
+
+  <nav id="views" aria-label="視角">
+    <button data-view="overview" class="active">🏠 俯瞰</button>
+    <button data-view="human">🧍 人</button>
+    <button data-view="dog">🐕 狗</button>
+    <button data-view="cat">🐈 貓</button>
+  </nav>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
