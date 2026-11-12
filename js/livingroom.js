@@ -1,118 +1,14 @@
 import * as THREE from 'three';
 import { DOG_SIDE, CAT_LOAF } from './pixelart.js';
+import { OBSTACLES, WALK, ROOMS, std, box, wall, wallRun, slab, cyl, ball, sprite, tileTexture, woodTexture, wallTexture } from './kit.js';
+import { buildDogRoom, DOGROOM } from './dogroom.js';
 
 // 座標：x 向東（+）、z 向南（+，大門側）、y 向上。單位：公尺。
 // 尺寸為依照片與手繪平面圖估計。
 export const ROOM = { W: 4.4, D: 3.8, H: 2.8 };
 const HW = ROOM.W / 2, HD = ROOM.D / 2, H = ROOM.H;
 export const DOORWAY = { x1: 1.15, x2: 2.05, h: 2.05 };
-export const CORRIDOR = { x1: 1.0, x2: 2.2, len: 9 };
-
-// 第一人稱視角的碰撞方塊 [x1, x2, z1, z2]
-export const OBSTACLES = [];
-
-/* ---------- 貼圖 ---------- */
-
-function pixelTexture(c) {
-  const t = new THREE.CanvasTexture(c);
-  t.wrapS = t.wrapT = THREE.RepeatWrapping;
-  t.colorSpace = THREE.SRGBColorSpace;
-  t.magFilter = t.minFilter = THREE.NearestFilter;
-  t.generateMipmaps = false;
-  return t;
-}
-
-// 低解析度點陣貼圖（復古 FPS 風格）
-function canvasTexture(size, draw) {
-  const c = document.createElement('canvas');
-  c.width = c.height = size;
-  draw(c.getContext('2d'), size);
-  return pixelTexture(c);
-}
-
-// 逐像素雜訊
-function speckle(g, s, base, spread) {
-  for (let y = 0; y < s; y++) for (let x = 0; x < s; x++) {
-    const [h, sat, l] = base;
-    g.fillStyle = `hsl(${h}, ${sat}%, ${l + (Math.random() - 0.5) * spread}%)`;
-    g.fillRect(x, y, 1, 1);
-  }
-}
-
-// 米色地磚，交丁鋪法；一張貼圖 = 0.6m x 0.6m
-function tileTexture() {
-  return canvasTexture(32, (g, s) => {
-    speckle(g, s, [42, 42, 74], 9);
-    g.fillStyle = '#7d6d4c';
-    const t = s / 2;
-    g.fillRect(0, 0, s, 1); g.fillRect(0, t, s, 1);
-    g.fillRect(0, 0, 1, t); g.fillRect(t, 0, 1, t);
-    g.fillRect(t / 2, t, 1, t); g.fillRect(t * 1.5, t, 1, t);
-  });
-}
-
-function woodTexture(base, dark, planks = 1) {
-  return canvasTexture(32, (g, s) => {
-    g.fillStyle = base;
-    g.fillRect(0, 0, s, s);
-    g.fillStyle = dark;
-    for (let x = 0; x < s; x++) {
-      g.globalAlpha = Math.random() * 0.22;
-      g.fillRect(x, 0, 1, s);
-      for (let k = 0; k < 3; k++) { g.globalAlpha = 0.12; g.fillRect(x, Math.floor(Math.random() * s), 1, 3); }
-    }
-    g.globalAlpha = 0.7;
-    for (let i = 0; i < planks; i++) g.fillRect(Math.round((i * s) / planks), 0, 1, s);
-    g.globalAlpha = 1;
-  });
-}
-
-// 牆面：帶顆粒的米白漆
-function wallTexture() {
-  return canvasTexture(32, (g, s) => speckle(g, s, [50, 28, 86], 7));
-}
-
-/* ---------- 小工具 ---------- */
-
-const std = (color, o = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.8, ...o });
-
-function box(parent, w, h, d, mat, x, y, z) {
-  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
-  m.position.set(x, y, z);
-  m.castShadow = m.receiveShadow = true;
-  parent.add(m);
-  return m;
-}
-
-// 單面牆：只從室內看得到，俯瞰時不會擋住視線
-function wall(parent, mat, cx, cy, cz, w, h, rotY) {
-  const geo = new THREE.PlaneGeometry(w, h);
-  const uv = geo.attributes.uv;                       // 貼圖每 0.8m 重複一次
-  for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * w / 0.8, uv.getY(i) * h / 0.8);
-  const m = new THREE.Mesh(geo, mat);
-  m.position.set(cx, cy, cz);
-  m.rotation.y = rotY;
-  m.receiveShadow = true;
-  parent.add(m);
-  return m;
-}
-
-function cyl(parent, r1, r2, h, mat, x, y, z, seg = 20) {
-  const m = new THREE.Mesh(new THREE.CylinderGeometry(r1, r2, h, seg), mat);
-  m.position.set(x, y, z);
-  m.castShadow = m.receiveShadow = true;
-  parent.add(m);
-  return m;
-}
-
-function ball(parent, r, mat, x, y, z, sx = 1, sy = 1, sz = 1) {
-  const m = new THREE.Mesh(new THREE.SphereGeometry(r, 24, 16), mat);
-  m.position.set(x, y, z);
-  m.scale.set(sx, sy, sz);
-  m.castShadow = true;
-  parent.add(m);
-  return m;
-}
+export const CORRIDOR = { x1: 1.0, x2: 2.2, len: 9.1 };
 
 /* ---------- 房間外殼 ---------- */
 
@@ -205,40 +101,38 @@ function buildSouthDoors(room, wallMat) {
   box(g, 0.02, 0.16, 0.04, metal, cx + 0.05, 1.0, z - 0.05);
 }
 
-// 走廊（尚未細部建模，先做出空間感）
+// 走廊：西側依序是書房、主臥室（尚未建模，門關著）、狗房（可進入）
 function buildCorridor(g, wallMat, tiles) {
   const { x1, x2, len } = CORRIDOR;
-  const w = x2 - x1, cx = (x1 + x2) / 2, zc = -HD - len / 2, hc = 2.5;
+  const w = x2 - x1, cx = (x1 + x2) / 2, zEnd = -HD - len, hc = 2.5;
 
   const tex = tiles.clone();
   tex.repeat.set(w / 0.6, len / 0.6);
-  const floor = new THREE.Mesh(new THREE.PlaneGeometry(w, len), std(0xffffff, { map: tex, roughness: 0.45 }));
-  floor.rotation.x = -Math.PI / 2;
-  floor.position.set(cx, 0, zc);
-  g.add(floor);
+  slab(g, std(0xffffff, { map: tex, roughness: 0.45 }), x1, x2, zEnd, -HD, 0);
+  slab(g, std(0xd9d2bd), x1, x2, zEnd, -HD, hc, false);
 
-  const ceil = new THREE.Mesh(new THREE.PlaneGeometry(w, len), std(0xd9d2bd));
-  ceil.rotation.x = Math.PI / 2;
-  ceil.position.set(cx, hc, zc);
-  g.add(ceil);
-
-  wall(g, wallMat, x1, hc / 2, zc, len, hc, Math.PI / 2);
-  wall(g, wallMat, x2, hc / 2, zc, len, hc, -Math.PI / 2);
-  // 門洞兩側與上方的走廊側牆面
+  const dd = DOGROOM.door;
+  wallRun(g, wallMat, 'z', x1, zEnd, -HD, hc, Math.PI / 2, [[dd.z1, dd.z2, dd.h]]);
+  wallRun(g, wallMat, 'z', x2, zEnd, -HD, hc, -Math.PI / 2);
+  // 門洞兩側的走廊側牆面
   wall(g, wallMat, (x1 + DOORWAY.x1) / 2, hc / 2, -HD - 0.001, DOORWAY.x1 - x1, hc, Math.PI);
   wall(g, wallMat, (x2 + DOORWAY.x2) / 2, hc / 2, -HD - 0.001, x2 - DOORWAY.x2, hc, Math.PI);
 
-  // 西側三間房的門（書房、主臥室、狗房）
+  // 書房、主臥室的門
   const door = std(0x3a2418, { roughness: 0.5 });
-  for (const dz of [1.2, 3.6, 6.0]) box(g, 0.05, 2.0, 0.85, door, x1 + 0.02, 1.0, -HD - dz);
+  for (const z of [-3.2, -5.0]) box(g, 0.05, 2.0, 0.85, door, x1 + 0.02, 1.0, z);
 
   // 走廊盡頭：廚房的亮光
   const glow = new THREE.Mesh(new THREE.PlaneGeometry(w, hc), new THREE.MeshBasicMaterial({ color: 0xf4ead2 }));
-  glow.position.set(cx, hc / 2, -HD - len);
+  glow.position.set(cx, hc / 2, zEnd);
   g.add(glow);
   const l1 = new THREE.PointLight(0xffe2b0, 0.7, 0, 0);
   l1.position.set(cx, 2.2, -HD - 2.5);
   g.add(l1);
+
+  WALK.push([-HW, HW, -HD, HD], [DOORWAY.x1, DOORWAY.x2, -HD - 0.5, -HD + 0.5], [x1, x2, zEnd, -HD]);
+  ROOMS.push({ name: '客廳', rect: [-HW, HW, -HD, HD], spot: [1.7, 1.5, 0.72], center: [0, 0.9, 0], r: 7.5, theta: 0.55 });
+  ROOMS.push({ name: '走廊', rect: [x1, x2, zEnd, -HD] });
 }
 
 /* ---------- 家具 ---------- */
@@ -481,17 +375,6 @@ function buildEastAndEntry(g) {
   }
 }
 
-/* ---------- 巴福柔與貓 ---------- */
-
-// 點陣圖立牌：永遠面向鏡頭，底部貼地
-function sprite(canvas, height) {
-  const mat = new THREE.SpriteMaterial({ map: pixelTexture(canvas), alphaTest: 0.5 });
-  const sp = new THREE.Sprite(mat);
-  sp.center.set(0.5, 0);
-  sp.scale.set(height * canvas.width / canvas.height, height, 1);
-  return sp;
-}
-
 /* ---------- 組裝 ---------- */
 
 export function buildLivingRoom(scene) {
@@ -501,6 +384,7 @@ export function buildLivingRoom(scene) {
   buildNorthWall(g);
   buildCenter(g);
   buildEastAndEntry(g);
+  buildDogRoom(g);
 
   // 巴福柔站在沙發後方通往走廊的走道
   const dog = sprite(DOG_SIDE, 0.72);

@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import { buildLivingRoom, ROOM, DOORWAY, CORRIDOR, OBSTACLES } from './livingroom.js';
+import { buildLivingRoom, ROOM } from './livingroom.js';
+import { OBSTACLES, WALK, ROOMS } from './kit.js';
 import { initTasks } from './tasks.js';
 import { DOG_FACE } from './pixelart.js';
 
@@ -75,15 +76,41 @@ function setView(name) {
   if (name === 'overview') {
     camera.fov = 50;
   } else {
-    [fp.x, fp.z] = v.start;
-    fp.yaw = v.yaw;
-    fp.pitch = v.pitch;
+    // 客廳用各視角自己的起點；其他房間從該房間的門口開始
+    if (focus === 0) { [fp.x, fp.z] = v.start; fp.yaw = v.yaw; fp.pitch = v.pitch; }
+    else { [fp.x, fp.z, fp.yaw] = stops[focus].spot; fp.pitch = 0; }
     camera.fov = v.fov;
   }
   camera.updateProjectionMatrix();
 }
 
 document.querySelectorAll('#views button').forEach(b => b.addEventListener('click', () => setView(b.dataset.view)));
+
+/* ---------- 房間切換 ---------- */
+
+const roomChip = document.getElementById('room-name');
+const stops = ROOMS.filter(r => r.spot);
+let focus = 0;      // 俯瞰時對準的房間
+
+function goRoom(i) {
+  focus = (i + stops.length) % stops.length;
+  const room = stops[focus];
+  orbit.target.set(...room.center);
+  orbit.r = room.r;
+  orbit.theta = room.theta;
+  orbit.phi = 0.85;
+  if (mode !== 'overview') {
+    [fp.x, fp.z, fp.yaw] = room.spot;
+    fp.pitch = 0;
+  }
+}
+roomChip.addEventListener('click', () => goRoom(focus + 1));
+
+function currentRoomName() {
+  if (mode === 'overview') return stops[focus].name;
+  const hit = ROOMS.find(({ rect: [x1, x2, z1, z2] }) => fp.x >= x1 && fp.x <= x2 && fp.z >= z1 && fp.z <= z2);
+  return hit ? hit.name : '';
+}
 
 /* ---------- 拖曳環顧 / 縮放 ---------- */
 
@@ -120,7 +147,7 @@ canvas.addEventListener('pointerup', release);
 canvas.addEventListener('pointercancel', release);
 
 function zoom(factor) {
-  orbit.r = THREE.MathUtils.clamp(orbit.r * factor, 3, 16);
+  orbit.r = THREE.MathUtils.clamp(orbit.r * factor, 3, 22);
 }
 canvas.addEventListener('wheel', e => {
   e.preventDefault();
@@ -159,10 +186,7 @@ joystick.addEventListener('pointerup', joyEnd);
 joystick.addEventListener('pointercancel', joyEnd);
 
 function walkable(x, z, r) {
-  const inRoom = Math.abs(x) <= HW - r && Math.abs(z) <= HD - r;
-  const inDoor = x >= DOORWAY.x1 + r && x <= DOORWAY.x2 - r && z <= -HD + r + 0.3 && z >= -HD - 0.3;
-  const inCorridor = x >= CORRIDOR.x1 + r && x <= CORRIDOR.x2 - r && z <= -HD - 0.2 && z >= -HD - CORRIDOR.len + r;
-  if (!inRoom && !inDoor && !inCorridor) return false;
+  if (!WALK.some(([x1, x2, z1, z2]) => x >= x1 + r && x <= x2 - r && z >= z1 + r && z <= z2 - r)) return false;
   return !OBSTACLES.some(([x1, x2, z1, z2]) => x > x1 - r && x < x2 + r && z > z1 - r && z < z2 + r);
 }
 
@@ -209,12 +233,18 @@ function frame() {
       target.z + dist * Math.sin(phi) * Math.cos(theta));
     camera.lookAt(target);
     // 從大門外側俯瞰時先隱藏落地門，才不會擋住室內
-    southDoors.visible = camera.position.z < HD;
+    southDoors.visible = focus !== 0 || camera.position.z < HD;
   } else {
     move(dt);
     southDoors.visible = true;
     camera.position.set(fp.x, VIEWS[mode].eye, fp.z);
     camera.rotation.set(fp.pitch, fp.yaw, 0);
+  }
+  const label = currentRoomName();
+  if (label && roomChip.textContent !== label + ' ▸') roomChip.textContent = label + ' ▸';
+  if (mode !== 'overview') {      // 走到哪個房間，俯瞰就跟著對準哪個房間
+    const i = stops.findIndex(r => r.name === label);
+    if (i >= 0 && i !== focus) { focus = i; orbit.target.set(...stops[i].center); orbit.r = stops[i].r; }
   }
   renderer.setRenderTarget(target);
   renderer.render(scene, camera);
@@ -232,4 +262,4 @@ setView('overview');
 frame();
 
 // 方便除錯與之後擴充
-window.__app = { setView, fp, orbit };
+window.__app = { setView, goRoom, fp, orbit };
