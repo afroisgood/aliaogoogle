@@ -9,6 +9,7 @@ import { initClean } from './clean.js';
 import { initFeed } from './feed.js';
 import { initGate } from './gate.js';
 import { initWander } from './wander.js';
+import { initLitter, initCatFeed } from './side.js';
 
 const canvas = document.getElementById('scene');
 // 先算到一張貼圖，再用後製決定風格：低解析度放大、色階、網點、描邊、色調
@@ -87,6 +88,11 @@ clean.onChange = () => missionChanged();
 const feed = initFeed({ scene, dog });                                               // 任務三：餵狗
 feed.onChange = () => missionChanged();
 const missions = [mission, clean, feed];
+// 支線任務
+const litter = initLitter({ scene });
+const catFeed = initCatFeed({ scene });
+const sides = [litter, catFeed];
+for (const m of sides) m.onChange = () => missionChanged();
 let renderTasks = () => {};
 function missionChanged() {
   renderTasks();
@@ -99,7 +105,7 @@ const gate = initGate({ scene, onChange: () => {
   alertBox.hidden = !gate.state.warning;
   wander.replan();
 } });
-const clickables = [...missions, gate];
+const clickables = [...missions, ...sides, gate];
 
 // 巴福柔和兩隻貓在屋裡到處走。巴福柔被牽著、自己去吃飯、或等著被繫牽繩的時候不亂走
 const wander = initWander([
@@ -424,7 +430,7 @@ function frame() {
     const i = stops.findIndex(r => r.name === label);
     if (i >= 0 && i !== focus) { focus = i; orbit.target.set(...stops[i].center); orbit.r = stops[i].r; }
   }
-  for (const m of missions) m.update(clock.elapsedTime);
+  for (const m of [...missions, ...sides]) m.update(clock.elapsedTime);
   wander.update(dt, clock.elapsedTime);
   if (gate.update(dt)) renderer.shadowMap.needsUpdate = true;   // 柵欄轉動中，陰影跟著重算
   // 從廚房走到別的房間時，柵欄還開著就警示
@@ -443,9 +449,9 @@ const portrait = document.getElementById('portrait');
 portrait.width = DOG_FACE.width; portrait.height = DOG_FACE.height;
 portrait.getContext('2d').drawImage(DOG_FACE, 0, 0);
 
-renderTasks = initTasks(missions);
+renderTasks = initTasks(missions, sides);
 setView('overview');
 frame();
 
 // 方便除錯與之後擴充
-window.__app = { setView, goRoom, fp, orbit, mission, clean, feed, gate, dog, cat, kitten };
+window.__app = { setView, goRoom, fp, orbit, mission, clean, feed, litter, catFeed, gate, dog, cat, kitten };
