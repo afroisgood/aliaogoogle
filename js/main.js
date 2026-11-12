@@ -12,6 +12,8 @@ renderer.setPixelRatio(1);
 if (STYLE.shadows) {
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = STYLE.pixel ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap;
+  renderer.shadowMap.autoUpdate = false;      // 場景是靜態的，陰影只算一次
+  renderer.shadowMap.needsUpdate = true;
 }
 if (FULL) canvas.style.imageRendering = 'auto';
 const filter = FULL ? THREE.LinearFilter : THREE.NearestFilter;

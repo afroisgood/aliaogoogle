@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { OBSTACLES, WALK, ROOMS, std, box, wallRun, slab, cyl, ball, canvasTexture, speckle, tileTexture, woodTexture, wallTexture } from './kit.js';
+import { OBSTACLES, WALK, ROOMS, ceilingLight, std, box, wallRun, slab, cyl, ball, canvasTexture, speckle, tileTexture, woodTexture, wallTexture } from './kit.js';
 
 // 狗房（走廊最裡面、西側的房間）與它附的廁所。尺寸為依照片估計。
 // 狗房門開在走廊西牆（狗房東牆）靠北端；廁所在狗房南側，門開在狗房南牆靠東端。
@@ -100,6 +100,7 @@ function buildRoom(g) {
   // 吸頂燈
   cyl(g, 0.16, 0.18, 0.06, new THREE.MeshBasicMaterial({ color: 0xfffbea }), (x1 + x2) / 2, H - 0.03, (zN + zS) / 2);
 
+  ceilingLight(g, (x1 + x2) / 2, H - 0.08, (zN + zS) / 2, 7);
   WALK.push([x1, x2, zN, zS], [x2 - 0.5, x2 + 0.5, door.z1, door.z2]);
   ROOMS.push({ name: '狗房', rect: [x1, x2, zN, zS], spot: [0.2, -10.4, Math.PI * 0.62], center: [-0.6, 0.9, -9.3], r: 8, theta: Math.PI * 1.22 });
 }
@@ -182,6 +183,7 @@ function buildBath(g) {
   cyl(g, 0.14, 0.16, 0.08, new THREE.MeshBasicMaterial({ color: 0xffffff }), 0.15, H - 0.04, zN + 1.2);
   box(g, 0.2, 0.02, 0.2, std(0xdcdcd8), 0.4, H - 0.01, zS - 0.8);
 
+  ceilingLight(g, 0.15, H - 0.1, zN + 1.2, 5, 1024, 0.8);
   WALK.push([x1, x2, zN, zS], [door.x1, door.x2, zN - 0.5, zN + 0.5]);
   ROOMS.push({ name: '廁所', rect: [x1, x2, zN, zS], spot: [0.5, -7.75, Math.PI], center: [0.15, 0.9, -6.9], r: 5.5, theta: Math.PI * 1.75 });
 }

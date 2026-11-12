@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { OBSTACLES, WALK, ROOMS, std, box, wall, wallRun, slab, cyl, canvasTexture, speckle, woodTexture, wallTexture } from './kit.js';
+import { OBSTACLES, WALK, ROOMS, ceilingLight, std, box, wall, wallRun, slab, cyl, canvasTexture, speckle, woodTexture, wallTexture } from './kit.js';
 
 // 廚房：走廊盡頭，佔整個屋寬。尺寸為依照片估計。
 // 從走廊進來（南牆靠東端的門洞，有寵物柵欄）：
@@ -185,6 +185,7 @@ export function buildKitchen(g) {
   // 吸頂燈
   cyl(g, 0.17, 0.19, 0.07, new THREE.MeshBasicMaterial({ color: 0xffffff }), -0.3, H - 0.035, (zN + zS) / 2);
 
+  ceilingLight(g, -0.3, H - 0.08, (zN + zS) / 2, 9);
   WALK.push([x1, x2, zN, zS], [door.x1, door.x2, zS - 0.5, zS + 0.5]);
   ROOMS.push({ name: '廚房', rect: [x1, x2, zN, zS], spot: [1.5, zS - 0.25, 0.75], center: [0, 0.9, (zN + zS) / 2], r: 8.5, theta: 2.55 });
 }

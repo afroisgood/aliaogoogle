@@ -2,18 +2,19 @@ import * as THREE from 'three';
 
 // 各房間共用的建模工具：點陣貼圖、方塊、單面牆、立牌
 
-// 畫面風格。網址加上 ?style=pixel / toon / soft 可切換，預設為 retro
+// 畫面風格。預設為 pixel（精緻像素）；網址加上 ?style=retro / toon / soft 可切換成其他風格
 const STYLES = {
+  // 最初的復古 FPS 風格：低解析度加網點
   retro: { h: 240, levels: 7, dither: 1, pixel: true, fog: [2.5, 13], ambient: 2.1, spot: 1.6 },
-  // 方案一「精緻像素」：解析度加倍、不用網點，保留點陣貼圖，加上陰影
+  // 「精緻像素」：解析度加倍、不用網點，保留點陣貼圖，加上陰影
   pixel: { h: 480, levels: 24, dither: 0, pixel: true, shadows: true, fog: [5, 26], ambient: 1.35, spot: 3.2 },
-  // 方案二「卡通描邊」：全解析度、色塊上色加墨線
+  // 「卡通描邊」：全解析度、色塊上色加墨線
   toon: { h: 0, levels: 0, dither: 0, toon: true, outline: 1, shadows: true, ambient: 1.9, spot: 2.2 },
-  // 方案三「柔光模型屋」：全解析度、柔和陰影與暖色調
+  // 「柔光模型屋」：全解析度、柔和陰影與暖色調
   soft: { h: 0, levels: 0, dither: 0, tonemap: 1, shadows: true, ambient: 1.5, spot: 5.0 },
 };
 const styleName = new URLSearchParams(location.search).get('style');
-export const STYLE = { name: STYLES[styleName] ? styleName : 'retro', ...(STYLES[styleName] || STYLES.retro) };
+export const STYLE = { name: STYLES[styleName] ? styleName : 'pixel', ...(STYLES[styleName] || STYLES.pixel) };
 
 // 第一人稱視角的碰撞方塊 [x1, x2, z1, z2]
 export const OBSTACLES = [];
@@ -118,6 +119,8 @@ export function wall(parent, mat, cx, cy, cz, w, h, rotY) {
   m.position.set(cx, cy, cz);
   m.rotation.y = rotY;
   m.receiveShadow = true;
+  m.castShadow = true;            // 牆會擋光，燈光才不會漏到隔壁房間
+  mat.shadowSide = THREE.DoubleSide;
   parent.add(m);
   return m;
 }
@@ -183,3 +186,21 @@ export function slab(parent, mat, x1, x2, z1, z2, y, up = true) {
 export const WALK = [];
 // 房間名稱與範圍，用來顯示目前所在位置
 export const ROOMS = [];
+
+// 吸頂燈的光：往下照的聚光燈，reach 是照得到的距離（公尺）
+export function ceilingLight(parent, x, y, z, reach = 8, mapSize = 1024, power = 1) {
+  const spot = new THREE.SpotLight(0xfff0d8, STYLE.spot * power, reach, 1.3, 0.6, 0);
+  spot.position.set(x, y, z);
+  spot.target.position.set(x, 0, z);
+  if (STYLE.shadows) {
+    spot.castShadow = true;
+    spot.shadow.mapSize.set(mapSize, mapSize);
+    spot.shadow.camera.near = 0.1;
+    spot.shadow.camera.far = reach;
+    spot.shadow.bias = -0.003;
+    spot.shadow.normalBias = 0.03;
+    spot.shadow.radius = STYLE.pixel ? 1 : 6;
+  }
+  parent.add(spot, spot.target);
+  return spot;
+}

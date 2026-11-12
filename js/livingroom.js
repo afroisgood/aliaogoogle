@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { DOG_SIDE, CAT_LOAF } from './pixelart.js';
-import { STYLE, OBSTACLES, WALK, ROOMS, std, box, wall, wallRun, slab, cyl, ball, sprite, tileTexture, woodTexture, wallTexture } from './kit.js';
+import { STYLE, OBSTACLES, WALK, ROOMS, ceilingLight, std, box, wall, wallRun, slab, cyl, ball, sprite, tileTexture, woodTexture, wallTexture } from './kit.js';
 import { buildDogRoom, DOGROOM } from './dogroom.js';
 import { buildKitchen, KITCHEN } from './kitchen.js';
 
@@ -126,8 +126,8 @@ function buildCorridor(g, wallMat, tiles) {
   // 走廊盡頭：通往廚房的門洞
   const kd = KITCHEN.door;
   wallRun(g, wallMat, 'x', zEnd + 0.001, x1, x2, hc, 0, [[kd.x1, kd.x2, kd.h]]);
-  const l1 = new THREE.PointLight(0xffe2b0, 0.7, 0, 0);
-  l1.position.set(cx, 2.2, -HD - 2.5);
+  const l1 = new THREE.PointLight(0xffe2b0, 0.9, 7, 0);
+  l1.position.set(cx, 2.2, -HD - 4.5);
   g.add(l1);
 
   WALK.push([-HW, HW, -HD, HD], [DOORWAY.x1, DOORWAY.x2, -HD - 0.5, -HD + 0.5], [x1, x2, zEnd, -HD]);
@@ -399,16 +399,7 @@ export function buildLivingRoom(scene) {
 
   // 燈光：吸頂燈
   g.add(new THREE.HemisphereLight(0xffffff, 0xb0a890, STYLE.ambient));
-  const spot = new THREE.SpotLight(0xfff0d8, STYLE.spot, 0, 1.3, 0.6, 0);
-  if (STYLE.shadows) {
-    spot.castShadow = true;
-    spot.shadow.mapSize.set(2048, 2048);
-    spot.shadow.bias = -0.002;
-    spot.shadow.radius = STYLE.pixel ? 1 : 6;
-  }
-  spot.position.set(-0.2, H - 0.08, 0.2);
-  spot.target.position.set(-0.2, 0, 0.2);
-  g.add(spot, spot.target);
+  ceilingLight(g, -0.2, H - 0.08, 0.2, 9, 2048);
   cyl(g, 0.16, 0.18, 0.06, new THREE.MeshBasicMaterial({ color: 0xfffbea }), -0.2, H - 0.03, 0.2).castShadow = false;
 
   scene.add(g);
