@@ -195,34 +195,31 @@ button:active, button.active, button[aria-expanded="true"] {
 .mission ol li.done { opacity: .55; text-decoration: line-through; }
 .mission ol li.now { color: #ffd23c; }
 
-/* ----- 散步路線頁 ----- */
+/* ----- 散步路線頁：一步一張街景照片 ----- */
 #walk {
   position: fixed;
   inset: 0;
   z-index: 10;
   display: flex;
-  gap: 10px;
+  flex-direction: column;
+  gap: 8px;
   padding: 10px;
   padding-top: max(10px, env(safe-area-inset-top));
   padding-bottom: max(10px, env(safe-area-inset-bottom));
   background: #2a2623;
   touch-action: pan-y;
-  overflow-y: auto;
 }
-.walk-map { flex: 1 1 50%; min-height: 0; display: flex; justify-content: center; }
-.walk-map svg { height: 100%; max-width: 100%; border: 3px solid var(--metal-lo); font-family: var(--font); }
-.walk-card { flex: 1 1 50%; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
-.walk-step { font-size: 13px; color: #b8b0a0; }
-.walk-card h2 { margin: 0; font-size: 24px; color: #ffd23c; text-shadow: 2px 2px 0 #000; }
-.walk-card p { margin: 0; font-size: 17px; line-height: 1.6; }
-.walk-photo { width: 100%; flex: 1 1 auto; min-height: 120px; object-fit: cover; border: 3px solid var(--metal-lo); }
-.walk-photo.empty { display: flex; align-items: center; justify-content: center; background: #1d1b19; color: #7a7468; font-size: 14px; }
+.walk-step { font-size: 14px; color: #ffd23c; }
+.walk-photo {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  object-fit: contain;
+  background: #000;
+  border: 3px solid var(--metal-lo);
+}
+.walk-text { margin: 0; font-size: 18px; line-height: 1.5; text-align: center; }
 .walk-nav { display: flex; gap: 8px; }
 .walk-nav button { flex: 1; padding: 14px 8px; font-size: 17px; }
 .walk-nav button:disabled { opacity: .35; }
 .walk-nav .primary { background: #8a1c14; color: #fff; }
-@media (orientation: portrait) {
-  #walk { flex-direction: column; }
-  .walk-map { flex: 0 0 46vh; }
-  .walk-map svg { height: 46vh; }
-}
