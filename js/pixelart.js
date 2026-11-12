@@ -12,7 +12,7 @@ export function gridCanvas(rows, palette) {
   return c;
 }
 
-const DOG_PAL = { k: '#17171b', g: '#3a3a44', w: '#e8e8e8', b: '#8a5a2a', n: '#000000', p: '#e0708a', r: '#c8362e' };
+const DOG_PAL = { k: '#17171b', g: '#3a3a44', w: '#e8e8e8', b: '#8a5a2a', n: '#000000', p: '#e0708a' };
 const CAT_PAL = { t: '#8a735a', d: '#3e3228', y: '#c9d23c', p: '#e09a90', w: '#d9cbb5', n: '#000000' };
 
 // 巴福柔（側面，頭朝左）
@@ -24,9 +24,9 @@ export const DOG_SIDE = gridCanvas([
   '.kkwnkkkkg..............gk...',
   'gkkkkkkkkk..............kk...',
   'nkkkkkkkkkg............gk....',
-  'kkkkkkkkkkrgggggggggggggk....',
-  '.ppkkkkkkkrkkkkkkkkkkkkkk....',
-  '.pp..kkkkkrkkkkkkkkkkkkkk....',
+  'kkkkkkkkkkkgggggggggggggk....',
+  '.ppkkkkkkkkkkkkkkkkkkkkkk....',
+  '.pp..kkkkkkkkkkkkkkkkkkkk....',
   '......kkkkkkkkkkkkkkkkkkk....',
   '......gkkkkkkkkkkkkkkkkkk....',
   '.......kkkkkkkkkkkkkkkkkk....',
