@@ -262,7 +262,7 @@ function buildNorthWall(g) {
   }
   // 層板上的雜物
   box(shelf, 0.22, 0.05, 0.16, std(0xd9c7a0), -0.75, 1.055, zc);
-  cyl(shelf, 0.06, 0.06, 0.12, std(0xf5f5f5), 0.55, 1.09, zc);
+  // 凍乾罐（右半邊、狗狗包旁邊）在任務三 feed.js 裡
   box(shelf, 0.3, 0.04, 0.3, std(0x2f6f6a, { roughness: 1 }), -0.65, 0.37, zc);
   // 掛在上櫃的綠色聖誕樹圍裙
   box(shelf, 0.34, 0.5, 0.015, std(0x2f5d43, { roughness: 1 }), -0.25, 1.95, zc + depth / 2 + 0.012);
@@ -352,13 +352,10 @@ function buildEastAndEntry(g) {
     s.rotation.y = 0.5;
   }
 
-  // 貓飼料袋、收納盒、貓碗架
-  box(g, 0.14, 0.42, 0.3, std(0x6f9f66, { roughness: 0.9 }), 1.24, 0.21, 1.25);
+  // 收納盒（飼料袋與狗碗在任務三 feed.js 裡）
   const bin = box(g, 0.28, 0.2, 0.36, new THREE.MeshStandardMaterial({ color: 0xd9e3ea, transparent: true, opacity: 0.6, roughness: 0.3 }), 1.34, 0.1, HD - 0.25);
   bin.castShadow = false;
   box(g, 0.29, 0.02, 0.37, std(0x8c98a6), 1.34, 0.21, HD - 0.25);
-  cyl(g, 0.1, 0.085, 0.1, std(0xb98652), 0.25, 0.05, HD - 0.5);
-  cyl(g, 0.085, 0.07, 0.03, std(0xe8e2d4), 0.25, 0.1, HD - 0.5);
 
   // 地上的玩具與啞鈴
   ball(g, 0.055, std(0xe5c020, { roughness: 0.7 }), -0.25, 0.05, -0.75, 1.6, 0.9, 1);

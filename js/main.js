@@ -5,6 +5,7 @@ import { initTasks } from './tasks.js';
 import { DOG_FACE } from './pixelart.js';
 import { initMission } from './mission.js';
 import { initClean } from './clean.js';
+import { initFeed } from './feed.js';
 
 const canvas = document.getElementById('scene');
 // 先算到一張貼圖，再用後製決定風格：低解析度放大、色階、網點、描邊、色調
@@ -81,7 +82,9 @@ const DOG_HOME = dog.position.toArray(), DOG_YAW = dog.rotation.y;
 const mission = initMission({ scene, dog, onChange: () => missionChanged() });   // 任務一：帶狗出門
 const clean = initClean({ scene });                                                  // 任務二：清潔時間
 clean.onChange = () => missionChanged();
-const missions = [mission, clean];
+const feed = initFeed({ scene, dog, home: DOG_HOME, homeYaw: DOG_YAW });         // 任務三：餵狗
+feed.onChange = () => missionChanged();
+const missions = [mission, clean, feed];
 let renderTasks = () => {};
 function missionChanged() {
   renderTasks();
@@ -376,6 +379,7 @@ scene.add(leashLine);
 function followLeash(dt) {
   const on = mission.state.leashed && mode !== 'dog';
   leashLine.visible = on;
+  if (feed.owns()) return;                // 巴福柔自己走去吃飯中
   if (!mission.state.leashed) {
     dog.position.set(...DOG_HOME);
     dog.rotation.y = DOG_YAW;
@@ -461,4 +465,4 @@ setView('overview');
 frame();
 
 // 方便除錯與之後擴充
-window.__app = { setView, goRoom, fp, orbit, mission, clean };
+window.__app = { setView, goRoom, fp, orbit, mission, clean, feed };
