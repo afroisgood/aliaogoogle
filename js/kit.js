@@ -2,17 +2,43 @@ import * as THREE from 'three';
 
 // 各房間共用的建模工具：點陣貼圖、方塊、單面牆、立牌
 
+// 畫面風格。網址加上 ?style=pixel / toon / soft 可切換，預設為 retro
+const STYLES = {
+  retro: { h: 240, levels: 7, dither: 1, pixel: true, fog: [2.5, 13], ambient: 2.1, spot: 1.6 },
+  // 方案一「精緻像素」：解析度加倍、不用網點，保留點陣貼圖，加上陰影
+  pixel: { h: 480, levels: 24, dither: 0, pixel: true, shadows: true, fog: [5, 26], ambient: 1.35, spot: 3.2 },
+  // 方案二「卡通描邊」：全解析度、色塊上色加墨線
+  toon: { h: 0, levels: 0, dither: 0, toon: true, outline: 1, shadows: true, ambient: 1.9, spot: 2.2 },
+  // 方案三「柔光模型屋」：全解析度、柔和陰影與暖色調
+  soft: { h: 0, levels: 0, dither: 0, tonemap: 1, shadows: true, ambient: 1.5, spot: 5.0 },
+};
+const styleName = new URLSearchParams(location.search).get('style');
+export const STYLE = { name: STYLES[styleName] ? styleName : 'retro', ...(STYLES[styleName] || STYLES.retro) };
+
 // 第一人稱視角的碰撞方塊 [x1, x2, z1, z2]
 export const OBSTACLES = [];
 
 /* ---------- 貼圖 ---------- */
 
 export function pixelTexture(c) {
+  if (!STYLE.pixel) {
+    // 平滑風格：把點陣圖放大成清楚的大圖，再用一般的平滑取樣
+    const big = document.createElement('canvas');
+    big.width = c.width * 8; big.height = c.height * 8;
+    const bg = big.getContext('2d');
+    bg.imageSmoothingEnabled = false;
+    bg.drawImage(c, 0, 0, big.width, big.height);
+    c = big;
+  }
   const t = new THREE.CanvasTexture(c);
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
   t.colorSpace = THREE.SRGBColorSpace;
-  t.magFilter = t.minFilter = THREE.NearestFilter;
-  t.generateMipmaps = false;
+  if (STYLE.pixel) {
+    t.magFilter = t.minFilter = THREE.NearestFilter;
+    t.generateMipmaps = false;
+  } else {
+    t.anisotropy = 8;
+  }
   return t;
 }
 
@@ -26,6 +52,7 @@ export function canvasTexture(size, draw) {
 
 // 逐像素雜訊
 export function speckle(g, s, base, spread) {
+  if (!STYLE.pixel) spread *= 0.3;      // 平滑風格的顆粒感要淡一點
   for (let y = 0; y < s; y++) for (let x = 0; x < s; x++) {
     const [h, sat, l] = base;
     g.fillStyle = `hsl(${h}, ${sat}%, ${l + (Math.random() - 0.5) * spread}%)`;
@@ -68,7 +95,11 @@ export function wallTexture() {
 
 /* ---------- 小工具 ---------- */
 
-export const std = (color, o = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.8, ...o });
+export const std = (color, o = {}) => {
+  if (!STYLE.toon) return new THREE.MeshStandardMaterial({ color, roughness: 0.8, ...o });
+  const { roughness, metalness, ...rest } = o;
+  return new THREE.MeshToonMaterial({ color, ...rest });
+};
 
 export function box(parent, w, h, d, mat, x, y, z) {
   const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
@@ -143,6 +174,7 @@ export function slab(parent, mat, x1, x2, z1, z2, y, up = true) {
   const m = new THREE.Mesh(new THREE.PlaneGeometry(x2 - x1, z2 - z1), mat);
   m.rotation.x = up ? -Math.PI / 2 : Math.PI / 2;
   m.position.set((x1 + x2) / 2, y, (z1 + z2) / 2);
+  m.receiveShadow = true;
   parent.add(m);
   return m;
 }

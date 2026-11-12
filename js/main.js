@@ -1,22 +1,34 @@
 import * as THREE from 'three';
 import { buildLivingRoom, ROOM } from './livingroom.js';
-import { OBSTACLES, WALK, ROOMS } from './kit.js';
+import { STYLE, OBSTACLES, WALK, ROOMS } from './kit.js';
 import { initTasks } from './tasks.js';
 import { DOG_FACE } from './pixelart.js';
 
 const canvas = document.getElementById('scene');
-// 復古 FPS 風格：低解析度算圖後放大，並把顏色壓成有限色階＋網點抖色
-const RENDER_H = 240;
+// 先算到一張貼圖，再用後製決定風格：低解析度放大、色階、網點、描邊、色調
+const FULL = !STYLE.h;                               // 全解析度風格
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: false });
 renderer.setPixelRatio(1);
-const target = new THREE.WebGLRenderTarget(320, RENDER_H, { magFilter: THREE.NearestFilter, minFilter: THREE.NearestFilter });
-const postScene = new THREE.Scene();
-const postCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
-postScene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.ShaderMaterial({
-  uniforms: { tex: { value: target.texture } },
+if (STYLE.shadows) {
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = STYLE.pixel ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap;
+}
+if (FULL) canvas.style.imageRendering = 'auto';
+const filter = FULL ? THREE.LinearFilter : THREE.NearestFilter;
+const target = new THREE.WebGLRenderTarget(320, 240, { magFilter: filter, minFilter: filter, samples: FULL ? 4 : 0 });
+target.depthTexture = new THREE.DepthTexture(320, 240);
+const post = new THREE.ShaderMaterial({
+  uniforms: {
+    tex: { value: target.texture }, depthTex: { value: target.depthTexture },
+    texel: { value: new THREE.Vector2(1 / 320, 1 / 240) },
+    levels: { value: STYLE.levels }, dither: { value: STYLE.dither },
+    outline: { value: STYLE.outline || 0 }, tonemap: { value: STYLE.tonemap || 0 },
+  },
   vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0., 1.); }',
   fragmentShader: `
-    uniform sampler2D tex; varying vec2 vUv;
+    uniform sampler2D tex, depthTex; uniform vec2 texel;
+    uniform float levels, dither, outline, tonemap;
+    varying vec2 vUv;
     float bayer(vec2 p){
       int x = int(mod(p.x, 4.)), y = int(mod(p.y, 4.));
       int i = x + y * 4;
@@ -26,17 +38,37 @@ postScene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.ShaderMate
       for (int k = 0; k < 16; k++) if (k == i) return m[k] / 16. - .5;
       return 0.;
     }
+    // 深度轉成實際距離（公尺），near/far 與相機設定一致
+    float dist(vec2 uv){ float z = texture2D(depthTex, uv).x * 2. - 1.; return 2. * .04 * 60. / (60. + .04 - z * (60. - .04)); }
+    float lum(vec2 uv){ return dot(texture2D(tex, uv).rgb, vec3(.3, .59, .11)); }
     void main(){
-      vec3 c = pow(clamp(texture2D(tex, vUv).rgb, 0., 1.), vec3(1. / 2.2));
-      float levels = 7.;
-      c = floor(c * levels + .5 + bayer(gl_FragCoord.xy) * .9) / levels;
+      vec3 c = texture2D(tex, vUv).rgb;
+      if (tonemap > .5) {                      // 柔和的底片色調、微暖
+        c *= vec3(1.04, 1., .93) * .82;
+        c = (c * (2.51 * c + .03)) / (c * (2.43 * c + .59) + .14);
+      }
+      c = pow(clamp(c, 0., 1.), vec3(1. / 2.2));
+      if (outline > .5) {                      // 墨線：深度或明暗突然改變的地方
+        vec2 t = texel * 1.3;
+        float d = dist(vUv);
+        float dd = abs(dist(vUv + vec2(t.x, 0.)) + dist(vUv - vec2(t.x, 0.)) - 2. * d)
+                 + abs(dist(vUv + vec2(0., t.y)) + dist(vUv - vec2(0., t.y)) - 2. * d);
+        float dl = abs(lum(vUv + vec2(t.x, 0.)) - lum(vUv - vec2(t.x, 0.))) + abs(lum(vUv + vec2(0., t.y)) - lum(vUv - vec2(0., t.y)));
+        float e = max(smoothstep(.015, .05, dd / d), smoothstep(.12, .3, dl) * .8);
+        c = mix(c, vec3(.16, .11, .09), e);
+      }
+      if (levels > .5) c = floor(c * levels + .5 + bayer(gl_FragCoord.xy) * .9 * dither) / levels;
+      if (tonemap > .5) { vec2 v = vUv - .5; c *= 1. - dot(v, v) * .35; }   // 四角微暗
       gl_FragColor = vec4(c, 1.);
     }`,
-})));
+});
+const postScene = new THREE.Scene();
+const postCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+postScene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), post));
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x000000);
-const fog = new THREE.Fog(0x000000, 2.5, 13);   // 遠處變暗
+const fog = STYLE.fog ? new THREE.Fog(0x000000, ...STYLE.fog) : null;   // 遠處變暗
 const camera = new THREE.PerspectiveCamera(70, 1, 0.04, 60);
 camera.rotation.order = 'YXZ';
 
@@ -295,9 +327,11 @@ function move(dt) {
 
 function resize() {
   const w = canvas.clientWidth, h = canvas.clientHeight;
-  const rw = Math.max(160, Math.round(RENDER_H * w / h));
-  renderer.setSize(rw, RENDER_H, false);
-  target.setSize(rw, RENDER_H);
+  const rh = FULL ? Math.round(h * Math.min(devicePixelRatio, 2)) : STYLE.h;
+  const rw = Math.max(160, Math.round(rh * w / h));
+  renderer.setSize(rw, rh, false);
+  target.setSize(rw, rh);
+  post.uniforms.texel.value.set(1 / rw, 1 / rh);
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
 }
