@@ -16,6 +16,8 @@ export const WALK_STEPS = [
   { photo: '13.webp', text: '沿著巷子直走。' },
   { photo: '14.webp', text: '繼續直走。左邊是紅白相間的大樓。' },
   { photo: '15.webp', text: '走到中興街的路口，左轉。' },
+  { photo: '16.webp', text: '沿著中興街直走，往山的方向。' },
+  { photo: '17.webp', text: '到家了！家在這排房子，藍色鐵捲門、門口停著機車和腳踏車。' },
 ];
 
 // 開啟散步頁；走完按「到家了」時呼叫 onDone
