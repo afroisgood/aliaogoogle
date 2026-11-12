@@ -341,3 +341,20 @@ button.primary { background: #8a1c14; color: #fff; }
 #flash { position: fixed; inset: 0; z-index: 11; background: #c01810; opacity: 0; pointer-events: none; }
 #flash.on { animation: flash .45s ease-out; }
 @keyframes flash { from { opacity: .55; } to { opacity: 0; } }
+/* 騎著、或動作進行中：選單縮小移到畫面上方，不擋住巴福柔 */
+#pet-menu.compact {
+  top: calc(max(8px, env(safe-area-inset-top)) + 130px);
+  bottom: auto;
+  width: auto;
+  max-width: calc(100vw - 20px);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+}
+#pet-menu.compact p { margin: 0; font-size: 13px; }
+#pet-menu.compact button { padding: 8px 18px; white-space: nowrap; }
+
+/* 被點穴：畫面發青、動不了 */
+#stun { position: fixed; inset: 0; z-index: 11; background: #2a6f8a; opacity: 0; pointer-events: none; transition: opacity .3s; }
+#stun.on { opacity: .28; }

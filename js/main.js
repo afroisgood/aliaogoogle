@@ -143,6 +143,7 @@ const play = initPlay({ dog, fp, walkable,
   canPlay: () => mode !== 'overview' && mode !== 'dog' && !mission.state.leashed && !feed.owns() && !mission.wants('dog') });
 clickables.push(play);
 
+const stunBox = document.getElementById('stun');
 const hint = document.getElementById('hint');
 const joystick = document.getElementById('joystick');
 const stick = document.getElementById('stick');
@@ -286,6 +287,7 @@ scene.add(marker);
 let path = null;
 
 function walkTo(clientX, clientY) {
+  if (play.state.stunned) return;
   const rect = canvas.getBoundingClientRect();
   raycaster.setFromCamera(new THREE.Vector2(
     ((clientX - rect.left) / rect.width) * 2 - 1, -((clientY - rect.top) / rect.height) * 2 + 1), camera);
@@ -473,7 +475,7 @@ function frame() {
     // 從大門外側俯瞰時先隱藏落地門，才不會擋住室內
     southDoors.visible = focus !== 0 || camera.position.z < HD;
   } else {
-    move(dt);
+    if (play.state.stunned) { stopWalk(); pending = null; } else move(dt);   // 被點穴：動不了
     followLeash(dt, clock.elapsedTime);
     southDoors.visible = true;
     play.update(dt, clock.elapsedTime);
@@ -483,9 +485,11 @@ function frame() {
       dog.rotation.y += Math.atan2(Math.sin(fp.yaw - dog.rotation.y), Math.cos(fp.yaw - dog.rotation.y)) * Math.min(1, dt * 6);
     }
     const jolt = play.state.shake;          // 被踹的時候鏡頭晃一下
+    const tip = play.state.tip;             // 被點穴：整個人僵直側倒，視線倒到地上
+    const eye = VIEWS[mode].eye * (1 - tip) + Math.min(VIEWS[mode].eye, 0.35) * tip;
     camera.position.set(fp.x + (riding ? Math.sin(fp.yaw) * 0.12 : 0),
-      (riding ? 1.2 : VIEWS[mode].eye) + Math.sin(clock.elapsedTime * 47) * 0.04 * jolt, fp.z + (riding ? Math.cos(fp.yaw) * 0.12 : 0));
-    camera.rotation.set(fp.pitch, fp.yaw, Math.sin(clock.elapsedTime * 38) * 0.09 * jolt);
+      (riding ? 1.2 : eye) + Math.sin(clock.elapsedTime * 47) * 0.04 * jolt, fp.z + (riding ? Math.cos(fp.yaw) * 0.12 : 0));
+    camera.rotation.set(fp.pitch, fp.yaw, Math.sin(clock.elapsedTime * 38) * 0.09 * jolt + tip * 1.25);
   }
   const label = currentRoomName();
   if (label && roomChip.textContent !== label + ' ▸') roomChip.textContent = label + ' ▸';
@@ -495,6 +499,7 @@ function frame() {
   }
   for (const m of [...missions, ...sides]) m.update(clock.elapsedTime);
   flow.update();
+  stunBox.classList.toggle('on', play.state.stunned);
   updateCompass(clock.elapsedTime);
   wander.update(dt, clock.elapsedTime);
   for (const o of [dog, cat, kitten]) animatePet(o, dt, clock.elapsedTime);    // 走路、搖尾巴、趴下等動作
