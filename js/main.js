@@ -4,6 +4,7 @@ import { STYLE, OBSTACLES, WALK, ROOMS } from './kit.js';
 import { initTasks } from './tasks.js';
 import { DOG_FACE } from './pixelart.js';
 import { initMission } from './mission.js';
+import { initClean } from './clean.js';
 
 const canvas = document.getElementById('scene');
 // 先算到一張貼圖，再用後製決定風格：低解析度放大、色階、網點、描邊、色調
@@ -77,7 +78,15 @@ camera.rotation.order = 'YXZ';
 
 const { dog, cat, southDoors } = buildLivingRoom(scene);
 const DOG_HOME = dog.position.toArray(), DOG_YAW = dog.rotation.y;
-const mission = initMission({ scene, dog, onChange: () => mission.onChange && mission.onChange() });
+const mission = initMission({ scene, dog, onChange: () => missionChanged() });   // 任務一：帶狗出門
+const clean = initClean({ scene });                                                  // 任務二：清潔時間
+clean.onChange = () => missionChanged();
+const missions = [mission, clean];
+let renderTasks = () => {};
+function missionChanged() {
+  renderTasks();
+  renderer.shadowMap.needsUpdate = true;     // 任務物件出現或消失，陰影要重算
+}
 
 /* ---------- 視角 ---------- */
 
@@ -280,12 +289,13 @@ function walkTo(clientX, clientY) {
   const rect = canvas.getBoundingClientRect();
   raycaster.setFromCamera(new THREE.Vector2(
     ((clientX - rect.left) / rect.width) * 2 - 1, -((clientY - rect.top) / rect.height) * 2 + 1), camera);
-  const hit = raycaster.intersectObjects(scene.children, true).find(h => h.object !== marker && h.object.visible);
+  const hit = raycaster.intersectObjects(scene.children, true).find(h => h.object !== marker && shown(h.object));
   if (!hit) return;
   // 點到任務目標：夠近就直接完成，不夠近就先走過去
   let id = null;
   for (let o = hit.object; o && !id; o = o.parent) id = o.userData.interact;
-  pending = id && mission.wants(id) ? { id, x: hit.point.x, z: hit.point.z } : null;
+  const m = id && missions.find(m => m.wants(id));
+  pending = m ? { m, id, x: hit.point.x, z: hit.point.z } : null;
   if (pending && tryInteract()) return;
   const pts = findPath(hit.point.x, hit.point.z, VIEWS[mode].radius);
   if (!pts.length) return;
@@ -294,15 +304,21 @@ function walkTo(clientX, clientY) {
   marker.visible = true;
 }
 
+// 物件本身與所有上層都看得見才算（藏起來的任務物件點不到）
+function shown(o) {
+  for (; o; o = o.parent) if (!o.visible) return false;
+  return true;
+}
+
 function stopWalk() { path = null; marker.visible = false; }
 
 let pending = null;      // 正要走過去互動的任務目標
 function tryInteract() {
   if (!pending || Math.hypot(pending.x - fp.x, pending.z - fp.z) > 1.7) return false;
-  const { id } = pending;
+  const { m, id } = pending;
   pending = null;
   stopWalk();
-  mission.trigger(id);
+  m.trigger(id);
   return true;
 }
 
@@ -428,7 +444,7 @@ function frame() {
     const i = stops.findIndex(r => r.name === label);
     if (i >= 0 && i !== focus) { focus = i; orbit.target.set(...stops[i].center); orbit.r = stops[i].r; }
   }
-  mission.update(clock.elapsedTime);
+  for (const m of missions) m.update(clock.elapsedTime);
   renderer.setRenderTarget(target);
   renderer.render(scene, camera);
   renderer.setRenderTarget(null);
@@ -440,10 +456,9 @@ const portrait = document.getElementById('portrait');
 portrait.width = DOG_FACE.width; portrait.height = DOG_FACE.height;
 portrait.getContext('2d').drawImage(DOG_FACE, 0, 0);
 
-const renderTasks = initTasks(mission);
-mission.onChange = renderTasks;
+renderTasks = initTasks(missions);
 setView('overview');
 frame();
 
 // 方便除錯與之後擴充
-window.__app = { setView, goRoom, fp, orbit, mission };
+window.__app = { setView, goRoom, fp, orbit, mission, clean };

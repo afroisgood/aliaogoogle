@@ -7,7 +7,7 @@ export const DOGROOM = {
   x1: -2.2, x2: 1.0, zN: -11.0, zS: -8.0, H: 2.8,
   door: { z1: -10.9, z2: -10.05, h: 2.05 },
 };
-const BATH = { x1: -0.6, x2: 0.9, zN: -8.0, zS: -5.6, H: 2.4, door: { x1: 0.15, x2: 0.85, h: 2.0 } };
+export const BATH = { x1: -0.6, x2: 0.9, zN: -8.0, zS: -5.6, H: 2.4, door: { x1: 0.15, x2: 0.85, h: 2.0 } };
 
 // 灰色壁磚：淺灰大理石紋，白色磚縫；一張 = 0.6m x 0.6m（兩排交丁）
 function bathWallTexture() {
@@ -136,9 +136,8 @@ function buildBath(g) {
   box(g, mid - x1 - 0.04, sh - 0.14, 0.015, frosted, (x1 + mid) / 2, sh / 2 + 0.03, sz);
   box(g, x2 - x1 - 0.02, 0.35, 0.02, darkTile, mid, 0.175, zS - 0.01);             // 牆面下緣深色磚
   OBSTACLES.push([x1, mid, sz - 0.04, sz + 0.04]);
-  // 淋浴間內的置物架與尿布墊
+  // 淋浴間內的置物架（尿布墊在任務二 clean.js 裡）
   box(g, 0.02, 0.06, 0.25, std(0x2f8f6a), x2 - 0.02, 1.15, zS - 0.5);
-  box(g, 0.7, 0.012, 0.5, std(0xf4f4f2, { roughness: 1 }), 0.4, 0.012, zS - 0.5);
 
   // 馬桶：進門右手邊（西牆）靠裡面，緊鄰淋浴間，面向東
   const tz = sz - 0.32;
@@ -149,6 +148,8 @@ function buildBath(g) {
   cyl(toilet, 0.2, 0.17, 0.08, white, 0.45, 0.42, 0).scale.x = 1.25;               // 座圈
   cyl(toilet, 0.14, 0.14, 0.085, std(0xb8d8e8, { roughness: 0.2 }), 0.45, 0.42, 0).scale.x = 1.25;
   box(toilet, 0.03, 0.42, 0.36, white, 0.23, 0.66, 0).rotation.z = 0.15;           // 掀起的馬桶蓋
+  toilet.name = 'toilet';
+  toilet.userData.interact = 'toilet';
   g.add(toilet);
   OBSTACLES.push([x1, x1 + 0.72, tz - 0.2, tz + 0.2]);
 
@@ -170,13 +171,20 @@ function buildBath(g) {
 
   // 東牆的毛巾架與置物架
   box(g, 0.24, 0.02, 0.6, chrome, x2 - 0.13, 1.7, zN + 1.3);
-  box(g, 0.2, 0.14, 0.4, white, x2 - 0.12, 1.78, zN + 1.3);
+  // 層架上一疊摺好的新尿布墊
+  const stack = new THREE.Group();
+  stack.name = 'padStack';
+  stack.userData.interact = 'stack';
+  stack.position.set(x2 - 0.12, 1.71, zN + 1.3);
+  for (let i = 0; i < 5; i++) {
+    box(stack, 0.2, 0.024, 0.4, white, 0, 0.014 + i * 0.028, (i % 2) * 0.01);
+    box(stack, 0.201, 0.004, 0.36, std(0x9cc6e0, { roughness: 1 }), 0, 0.028 + i * 0.028, (i % 2) * 0.01);
+  }
+  g.add(stack);
   box(g, 0.02, 0.02, 0.55, chrome, x2 - 0.07, 1.1, zN + 1.3);
   box(g, 0.06, 0.2, 0.06, std(0xf0f0e8), x2 - 0.1, 1.5, zN + 1.15);
 
-  // 地上的尿布墊、地板排水孔
-  const pad = box(g, 0.45, 0.012, 0.9, std(0xf4f4f2, { roughness: 1 }), 0.4, 0.012, zN + 0.95);
-  pad.rotation.y = 0.2;
+  // 地板排水孔（地上的尿布墊在任務二 clean.js 裡）
   box(g, 0.12, 0.006, 0.12, chrome, x1 + 0.6, 0.006, zN + 0.75);
 
   // 吸頂燈與抽風機
