@@ -1,10 +1,11 @@
 import * as THREE from 'three';
 import { std, box, cyl, OBSTACLES } from './kit.js';
 import { ROOM } from './livingroom.js';
+import { findPath } from './nav.js';
 
 // 任務三：餵狗。
 // 狗碗在客廳白色櫃子西側的地上；綠色飼料袋靠在白色櫃子背板旁；凍乾罐在松木層架中間那層右半邊。
-// 拿碗 → 裝飼料 → 裝凍乾，碗會放回原位，巴福柔自己走過去吃，吃完再走回原本的位置。
+// 拿碗 → 裝飼料 → 裝凍乾，碗會放回原位，巴福柔從牠當時所在的地方自己走過去吃，吃完繼續到處走。
 export const FEED = {
   id: 'feed',
   title: '任務三：餵狗',
@@ -24,16 +25,15 @@ const TARGETS = [
 
 const HD = ROOM.D / 2;
 const BOWL = [0.25, HD - 0.5];
-// 巴福柔吃飯時站的位置（頭朝東對著碗），以及從原本位置繞過沙發北邊走過去的路線
+// 巴福柔吃飯時站的位置（頭朝東對著碗）
 const EAT_SPOT = [BOWL[0] - 0.6, BOWL[1]];
-const ROUTE = [[1.5, -0.95], [0.05, -0.95], EAT_SPOT];
 const EAT_TIME = 4;              // 吃幾秒
 const DOG_SPEED = 1.2;
 
 const DONE_KEY = 'bafurou-missions-done';
 const loadDone = () => { try { return JSON.parse(localStorage.getItem(DONE_KEY)) || {}; } catch { return {}; } };
 
-export function initFeed({ scene, dog, home, homeYaw }) {
+export function initFeed({ scene, dog }) {
   const state = { active: false, at: 0, done: !!loadDone()[FEED.id] };
   const invisible = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false });
 
@@ -90,13 +90,18 @@ export function initFeed({ scene, dog, home, homeYaw }) {
   };
 
   /* ----- 巴福柔走去吃飯：null 表示不歸這個任務管 ----- */
-  let walk = null;      // { path, eat }：path 是還沒走完的路線點，eat 是已經吃了幾秒
+  // { path, eat, retry }：path 是還沒走完的路線點，eat 是已經吃了幾秒
+  let walk = null;
   const owns = () => !!walk;
+  const DOG_R = 0.2;
+  const atBowl = () => Math.hypot(dog.position.x - EAT_SPOT[0], dog.position.z - EAT_SPOT[1]) < 0.15;
+  const blocked = () => !!walk && !walk.path.length && !atBowl() && walk.eat === 0;
+  const plan = () => findPath(dog.position.x, dog.position.z, EAT_SPOT[0], EAT_SPOT[1], DOG_R);
 
   function release() {
     walk = null;
-    dog.position.set(...home);
-    dog.rotation.set(0, homeYaw, 0);
+    dog.rotation.x = 0;
+    dog.position.y = 0;
   }
 
   function idle() {
@@ -138,7 +143,7 @@ export function initFeed({ scene, dog, home, homeYaw }) {
       freeze.visible = true;
       bowl.visible = true;
       dog.rotation.order = 'YXZ';
-      walk = { path: ROUTE.map(p => [...p]), eat: 0, back: false };
+      walk = { path: plan(), eat: 0, retry: 0 };
     }
     state.at++;
     onChange();
@@ -170,7 +175,15 @@ export function initFeed({ scene, dog, home, homeYaw }) {
       }
       dog.rotation.x = 0;
       p.y = Math.abs(Math.sin(time * 14)) * 0.02;     // 走路的小跳動
-      if (!walk.path.length && walk.back) release();
+      return;
+    }
+    if (!atBowl()) {                         // 走不到（被廚房柵欄關在裡面）：在原地等，每秒再試一次
+      p.y = 0;
+      if ((walk.retry -= dt) <= 0) {
+        walk.retry = 1;
+        walk.path = plan();
+        onChange();
+      }
       return;
     }
     // 到碗前面：頭朝碗低下去吃，飼料慢慢變少
@@ -183,8 +196,7 @@ export function initFeed({ scene, dog, home, homeYaw }) {
     freeze.visible = walk.eat < EAT_TIME * 0.5;
     if (walk.eat >= EAT_TIME) {
       kibble.visible = false;
-      dog.rotation.x = 0;
-      walk = { path: [...ROUTE.slice(0, -1).reverse(), [home[0], home[2]]], eat: 0, back: true };
+      release();
       finish();
     }
   }
@@ -193,7 +205,10 @@ export function initFeed({ scene, dog, home, homeYaw }) {
   return {
     def: FEED, state, start, stop, trigger, update, owns,
     wants: id => !!target() && target().id === id,
-    hint: () => (target() ? target().hint : state.active ? '巴福柔正在吃飯…' : ''),
+    hint: () => (target() ? target().hint
+      : !state.active ? ''
+      : blocked() ? '巴福柔被廚房柵欄擋住了，去把柵欄打開'
+      : '巴福柔正在吃飯…'),
     stepTexts: () => FEED.steps.map(s => s.text),
     stepsDone: () => (state.done && !state.active ? FEED.steps.length : !state.active ? 0 : state.at),
     set onChange(f) { onChange = f; },

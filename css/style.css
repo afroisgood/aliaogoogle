@@ -189,6 +189,23 @@ button:active, button.active, button[aria-expanded="true"] {
   text-align: center;
   pointer-events: none;
 }
+/* 警示：廚房柵欄沒關 */
+#alert {
+  position: fixed;
+  top: calc(max(8px, env(safe-area-inset-top)) + 96px);
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: calc(100vw - 20px);
+  padding: 8px 16px;
+  background: #8a1c14;
+  border: 3px solid #ffd23c;
+  color: #fff;
+  font-size: 16px;
+  text-align: center;
+  pointer-events: none;
+  animation: blink 1s steps(2, start) infinite;
+}
+@keyframes blink { 50% { border-color: #ff6a3c; } }
 .mission-title { color: #ffd23c; margin-bottom: 4px; }
 .mission ol { margin: 0 0 10px; padding-left: 22px; }
 .mission ol li { padding: 3px 0; font-size: 14px; }

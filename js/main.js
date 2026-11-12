@@ -1,11 +1,14 @@
 import * as THREE from 'three';
 import { buildLivingRoom, ROOM } from './livingroom.js';
-import { STYLE, OBSTACLES, WALK, ROOMS } from './kit.js';
+import { STYLE, ROOMS } from './kit.js';
+import { walkable, findPath } from './nav.js';
 import { initTasks } from './tasks.js';
 import { DOG_FACE } from './pixelart.js';
 import { initMission } from './mission.js';
 import { initClean } from './clean.js';
 import { initFeed } from './feed.js';
+import { initGate } from './gate.js';
+import { initWander } from './wander.js';
 
 const canvas = document.getElementById('scene');
 // 先算到一張貼圖，再用後製決定風格：低解析度放大、色階、網點、描邊、色調
@@ -77,12 +80,11 @@ const fog = STYLE.fog ? new THREE.Fog(0x000000, ...STYLE.fog) : null;   // 遠�
 const camera = new THREE.PerspectiveCamera(70, 1, 0.04, 60);
 camera.rotation.order = 'YXZ';
 
-const { dog, cat, southDoors } = buildLivingRoom(scene);
-const DOG_HOME = dog.position.toArray(), DOG_YAW = dog.rotation.y;
+const { dog, cat, kitten, southDoors } = buildLivingRoom(scene);
 const mission = initMission({ scene, dog, onChange: () => missionChanged() });   // 任務一：帶狗出門
 const clean = initClean({ scene });                                                  // 任務二：清潔時間
 clean.onChange = () => missionChanged();
-const feed = initFeed({ scene, dog, home: DOG_HOME, homeYaw: DOG_YAW });         // 任務三：餵狗
+const feed = initFeed({ scene, dog });                                               // 任務三：餵狗
 feed.onChange = () => missionChanged();
 const missions = [mission, clean, feed];
 let renderTasks = () => {};
@@ -90,6 +92,22 @@ function missionChanged() {
   renderTasks();
   renderer.shadowMap.needsUpdate = true;     // 任務物件出現或消失，陰影要重算
 }
+
+// 廚房柵欄：平常關著，點一下開關；開著離開廚房會跳出警示
+const alertBox = document.getElementById('alert');
+const gate = initGate({ scene, onChange: () => {
+  alertBox.hidden = !gate.state.warning;
+  wander.replan();
+} });
+const clickables = [...missions, gate];
+
+// 巴福柔和兩隻貓在屋裡到處走。巴福柔被牽著、自己去吃飯、或等著被繫牽繩的時候不亂走
+const wander = initWander([
+  { obj: dog, r: 0.2, speed: 0.8, rest: [3, 9],
+    free: () => !mission.state.leashed && !feed.owns() && !mission.wants('dog') },
+  { obj: cat, r: 0.14, speed: 0.6, rest: [4, 14], free: () => true },
+  { obj: kitten, r: 0.12, speed: 0.75, rest: [2, 8], free: () => true },
+]);
 
 /* ---------- 視角 ---------- */
 
@@ -122,7 +140,6 @@ function setView(name) {
   stopWalk();
   scene.fog = name === 'overview' ? null : fog;
   dog.visible = name !== 'dog';
-  if (mission.state.active && !mission.state.leashed) dog.position.set(...DOG_HOME);
   cat.visible = name !== 'cat';
   if (name === 'overview') {
     camera.fov = 50;
@@ -243,50 +260,14 @@ const joyEnd = e => {
 joystick.addEventListener('pointerup', joyEnd);
 joystick.addEventListener('pointercancel', joyEnd);
 
-function walkable(x, z, r) {
-  if (!WALK.some(([x1, x2, z1, z2]) => x >= x1 + r && x <= x2 - r && z >= z1 + r && z <= z2 - r)) return false;
-  return !OBSTACLES.some(([x1, x2, z1, z2]) => x > x1 - r && x < x2 + r && z > z1 - r && z < z2 + r);
-}
-
 /* ---------- 點擊移動：在 10 公分格線上找路，會自己繞過家具、穿過門 ---------- */
 
-const CELL = 0.1;
 const raycaster = new THREE.Raycaster();
 const marker = new THREE.Mesh(new THREE.RingGeometry(0.07, 0.13, 4), new THREE.MeshBasicMaterial({ color: 0xffd23c, side: THREE.DoubleSide, fog: false }));
 marker.rotation.x = -Math.PI / 2;
 marker.visible = false;
 scene.add(marker);
 let path = null;
-
-function findPath(tx, tz, r) {
-  const x0 = Math.min(...WALK.map(w => w[0])), z0 = Math.min(...WALK.map(w => w[2]));
-  const nx = Math.ceil((Math.max(...WALK.map(w => w[1])) - x0) / CELL) + 1;
-  const nz = Math.ceil((Math.max(...WALK.map(w => w[3])) - z0) / CELL) + 1;
-  const px = i => x0 + (i % nx) * CELL, pz = i => z0 + Math.floor(i / nx) * CELL;
-  const ok = i => walkable(px(i), pz(i), r);
-  const start = Math.round((fp.x - x0) / CELL) + Math.round((fp.z - z0) / CELL) * nx;
-  const prev = new Int32Array(nx * nz).fill(-2);
-  prev[start] = -1;
-  const queue = [start];
-  let best = start, bestD = Infinity;
-  for (let q = 0; q < queue.length; q++) {
-    const i = queue[q], cx = i % nx, cz = Math.floor(i / nx);
-    const d = Math.hypot(px(i) - tx, pz(i) - tz);
-    if (d < bestD) { bestD = d; best = i; }
-    for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]]) {
-      const ax = cx + dx, az = cz + dz;
-      if (ax < 0 || az < 0 || ax >= nx || az >= nz) continue;
-      const j = ax + az * nx;
-      if (prev[j] !== -2 || !ok(j)) continue;
-      if (dx && dz && (!ok(cx + dx + cz * nx) || !ok(cx + az * nx))) continue;   // 不切牆角
-      prev[j] = i;
-      queue.push(j);
-    }
-  }
-  const pts = [];
-  for (let i = best; i !== start && i >= 0; i = prev[i]) pts.push([px(i), pz(i)]);
-  return pts.reverse();
-}
 
 function walkTo(clientX, clientY) {
   const rect = canvas.getBoundingClientRect();
@@ -297,10 +278,10 @@ function walkTo(clientX, clientY) {
   // 點到任務目標：夠近就直接完成，不夠近就先走過去
   let id = null;
   for (let o = hit.object; o && !id; o = o.parent) id = o.userData.interact;
-  const m = id && missions.find(m => m.wants(id));
+  const m = id && clickables.find(m => m.wants(id));
   pending = m ? { m, id, x: hit.point.x, z: hit.point.z } : null;
   if (pending && tryInteract()) return;
-  const pts = findPath(hit.point.x, hit.point.z, VIEWS[mode].radius);
+  const pts = findPath(fp.x, fp.z, hit.point.x, hit.point.z, VIEWS[mode].radius);
   if (!pts.length) return;
   path = pts;
   marker.position.set(pts[pts.length - 1][0], 0.03, pts[pts.length - 1][1]);
@@ -379,13 +360,7 @@ scene.add(leashLine);
 function followLeash(dt) {
   const on = mission.state.leashed && mode !== 'dog';
   leashLine.visible = on;
-  if (feed.owns()) return;                // 巴福柔自己走去吃飯中
-  if (!mission.state.leashed) {
-    dog.position.set(...DOG_HOME);
-    dog.rotation.y = DOG_YAW;
-    return;
-  }
-  if (!on) return;
+  if (!on) return;                        // 沒牽著：巴福柔自己到處走（wander.js）
   const dx = fp.x - dog.position.x, dz = fp.z - dog.position.z, d = Math.hypot(dx, dz);
   if (d > LEASH) {
     const step = Math.min(d - LEASH, 3 * dt);
@@ -422,6 +397,7 @@ addEventListener('resize', resize);
 resize();
 
 const clock = new THREE.Clock();
+let lastRoom = '';
 function frame() {
   const dt = Math.min(clock.getDelta(), 0.05);
   if (mode === 'overview') {
@@ -449,6 +425,13 @@ function frame() {
     if (i >= 0 && i !== focus) { focus = i; orbit.target.set(...stops[i].center); orbit.r = stops[i].r; }
   }
   for (const m of missions) m.update(clock.elapsedTime);
+  wander.update(dt, clock.elapsedTime);
+  if (gate.update(dt)) renderer.shadowMap.needsUpdate = true;   // 柵欄轉動中，陰影跟著重算
+  // 從廚房走到別的房間時，柵欄還開著就警示
+  if (mode !== 'overview' && label) {
+    if (lastRoom === '廚房' && label !== '廚房') gate.leftKitchen();
+    lastRoom = label;
+  }
   renderer.setRenderTarget(target);
   renderer.render(scene, camera);
   renderer.setRenderTarget(null);
@@ -465,4 +448,4 @@ setView('overview');
 frame();
 
 // 方便除錯與之後擴充
-window.__app = { setView, goRoom, fp, orbit, mission, clean, feed };
+window.__app = { setView, goRoom, fp, orbit, mission, clean, feed, gate, dog, cat, kitten };

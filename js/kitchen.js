@@ -51,7 +51,7 @@ export function buildKitchen(g) {
   wallRun(g, wallMat, 'z', x1, zN, zS, H, Math.PI / 2);                              // 西
   wallRun(g, panelMat, 'z', x2, zN, zS, H, -Math.PI / 2);                            // 東（木紋壁板）
 
-  // 門洞的邊框，以及打開靠在牆邊的白色寵物柵欄
+  // 門洞的邊框，以及白色寵物柵欄（平常關著，開關的動作在 gate.js）
   const dx = (door.x1 + door.x2) / 2;
   box(g, 0.05, door.h, 0.2, cream, door.x1, door.h / 2, zS);
   box(g, 0.05, door.h, 0.2, cream, door.x2, door.h / 2, zS);
@@ -61,6 +61,12 @@ export function buildKitchen(g) {
   for (let i = 0; i <= 8; i++) box(gate, 0.015, 0.7, 0.015, white, 0, 0.4, -i * 0.09);
   box(gate, 0.025, 0.03, 0.76, white, 0, 0.75, -0.36);
   box(gate, 0.025, 0.03, 0.76, white, 0, 0.05, -0.36);
+  const gateHit = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.85, 0.8),
+    new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }));
+  gateHit.position.set(0, 0.42, -0.36);
+  gate.add(gateHit);
+  gate.name = 'kitchenGate';
+  gate.userData.interact = 'gate';
   g.add(gate);
 
   /* ----- 北牆 ----- */

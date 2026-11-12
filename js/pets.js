@@ -3,6 +3,19 @@ import { std, box } from './kit.js';
 
 // 用方塊拼成的立體巴福柔與貓（頭朝 -z）。方塊造型和整體的像素風格一致。
 
+// 寵物會到處走，但場景的陰影只算一次：寵物本身不投影，改在腳下放一塊會跟著走的影子
+const blobMat = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.28, depthWrite: false });
+function movable(g, w, l) {
+  g.traverse(o => { o.castShadow = false; });
+  const blob = new THREE.Mesh(new THREE.CircleGeometry(0.5, 16), blobMat);
+  blob.rotation.x = -Math.PI / 2;
+  blob.scale.set(w, l, 1);
+  blob.position.y = 0.006;
+  blob.raycast = () => {};
+  g.add(blob);
+  return g;
+}
+
 export function buildDog() {
   const d = new THREE.Group();
   const fur = std(0x1a1a1e, { roughness: 0.7 });
@@ -26,7 +39,7 @@ export function buildDog() {
     box(d, 0.08, 0.04, 0.11, shade, s * 0.075, 0.02, 0.24);
   }
   box(d, 0.05, 0.3, 0.05, fur, 0, 0.72, 0.36).rotation.x = -0.55;                  // 翹起的尾巴
-  return d;
+  return movable(d, 0.34, 0.8);
 }
 
 export function buildCat() {
@@ -47,5 +60,5 @@ export function buildCat() {
     box(c, 0.03, 0.015, 0.125, dark, s * 0.04, 0.238, -0.2);                       // 頭頂的條紋
   }
   box(c, 0.04, 0.04, 0.26, dark, 0.12, 0.02, 0.08);          // 捲在身邊的尾巴
-  return c;
+  return movable(c, 0.24, 0.42);
 }

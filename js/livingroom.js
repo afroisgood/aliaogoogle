@@ -382,17 +382,22 @@ export function buildLivingRoom(scene) {
   buildDogRoom(g);
   buildKitchen(g);
 
-  // 巴福柔站在沙發後方通往走廊的走道
+  // 巴福柔一開始站在沙發後方通往走廊的走道，之後會在屋裡到處走
   const dog = buildDog();
   dog.position.set(1.72, 0, -0.55);
   dog.rotation.y = Math.PI * 0.85;      // 面向大門
   g.add(dog);
 
-  // 貓趴在白色櫃子上
+  // 兩隻貓：大的在客廳地上，小的（比較小一號）在走廊，之後也會到處走
   const cat = buildCat();
-  cat.position.set(0.95, 1.2, CAB_Z);
+  cat.position.set(-0.4, 0, 1.0);
   cat.rotation.y = Math.PI * 0.4;
   g.add(cat);
+  const kitten = buildCat();
+  kitten.scale.setScalar(0.75);
+  kitten.position.set(1.6, 0, -4.2);
+  kitten.rotation.y = -Math.PI * 0.3;
+  g.add(kitten);
 
   // 燈光：吸頂燈
   g.add(new THREE.HemisphereLight(WARM.sky, WARM.ground, STYLE.ambient * WARM.boost));
@@ -400,5 +405,5 @@ export function buildLivingRoom(scene) {
   cyl(g, 0.16, 0.18, 0.06, new THREE.MeshBasicMaterial({ color: 0xfffbea }), -0.2, H - 0.03, 0.2).castShadow = false;
 
   scene.add(g);
-  return { group: g, dog, cat, southDoors: g.getObjectByName('southDoors') };
+  return { group: g, dog, cat, kitten, southDoors: g.getObjectByName('southDoors') };
 }
