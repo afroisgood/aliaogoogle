@@ -1,16 +1,41 @@
 import * as THREE from 'three';
 import { buildLivingRoom, ROOM, DOORWAY, CORRIDOR, OBSTACLES } from './livingroom.js';
 import { initTasks } from './tasks.js';
+import { DOG_FACE } from './pixelart.js';
 
 const canvas = document.getElementById('scene');
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-renderer.toneMapping = THREE.ACESFilmicToneMapping;
+// 復古 FPS 風格：低解析度算圖後放大，並把顏色壓成有限色階＋網點抖色
+const RENDER_H = 240;
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: false });
+renderer.setPixelRatio(1);
+const target = new THREE.WebGLRenderTarget(320, RENDER_H, { magFilter: THREE.NearestFilter, minFilter: THREE.NearestFilter });
+const postScene = new THREE.Scene();
+const postCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+postScene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.ShaderMaterial({
+  uniforms: { tex: { value: target.texture } },
+  vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0., 1.); }',
+  fragmentShader: `
+    uniform sampler2D tex; varying vec2 vUv;
+    float bayer(vec2 p){
+      int x = int(mod(p.x, 4.)), y = int(mod(p.y, 4.));
+      int i = x + y * 4;
+      float m[16];
+      m[0]=0.;m[1]=8.;m[2]=2.;m[3]=10.;m[4]=12.;m[5]=4.;m[6]=14.;m[7]=6.;
+      m[8]=3.;m[9]=11.;m[10]=1.;m[11]=9.;m[12]=15.;m[13]=7.;m[14]=13.;m[15]=5.;
+      for (int k = 0; k < 16; k++) if (k == i) return m[k] / 16. - .5;
+      return 0.;
+    }
+    void main(){
+      vec3 c = pow(clamp(texture2D(tex, vUv).rgb, 0., 1.), vec3(1. / 2.2));
+      float levels = 7.;
+      c = floor(c * levels + .5 + bayer(gl_FragCoord.xy) * .9) / levels;
+      gl_FragColor = vec4(c, 1.);
+    }`,
+})));
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x1b1714);
+scene.background = new THREE.Color(0x000000);
+const fog = new THREE.Fog(0x000000, 2.5, 13);   // 遠處變暗
 const camera = new THREE.PerspectiveCamera(70, 1, 0.04, 60);
 camera.rotation.order = 'YXZ';
 
@@ -22,7 +47,7 @@ const HD = ROOM.D / 2, HW = ROOM.W / 2;
 // yaw = 0 朝北（屋內深處），正值往西轉
 const VIEWS = {
   overview: { hint: '拖曳旋轉・滾輪或雙指縮放' },
-  human: { eye: 1.6, speed: 1.8, radius: 0.22, start: [1.7, 1.5], yaw: 0.72, pitch: -0.12, fov: 75,
+  human: { eye: 1.6, speed: 1.8, radius: 0.18, start: [1.7, 1.5], yaw: 0.72, pitch: -0.12, fov: 75,
     hint: '人的視角（從大門進來）・拖曳環顧・搖桿或 WASD 移動' },
   dog: { eye: 0.62, speed: 2.4, radius: 0.2, start: [1.72, -0.55], yaw: Math.PI * 0.8, pitch: 0.12, fov: 80,
     hint: '巴福柔的視角・拖曳環顧・搖桿或 WASD 移動' },
@@ -44,6 +69,7 @@ function setView(name) {
   document.querySelectorAll('#views button').forEach(b => b.classList.toggle('active', b.dataset.view === name));
   hint.textContent = v.hint;
   joystick.hidden = name === 'overview';
+  scene.fog = name === 'overview' ? null : fog;
   dog.visible = name !== 'dog';
   cat.visible = name !== 'cat';
   if (name === 'overview') {
@@ -160,8 +186,10 @@ function move(dt) {
 /* ---------- 主迴圈 ---------- */
 
 function resize() {
-  const w = innerWidth, h = innerHeight;
-  renderer.setSize(w, h, false);
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  const rw = Math.max(160, Math.round(RENDER_H * w / h));
+  renderer.setSize(rw, RENDER_H, false);
+  target.setSize(rw, RENDER_H);
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
 }
@@ -188,9 +216,16 @@ function frame() {
     camera.position.set(fp.x, VIEWS[mode].eye, fp.z);
     camera.rotation.set(fp.pitch, fp.yaw, 0);
   }
+  renderer.setRenderTarget(target);
   renderer.render(scene, camera);
+  renderer.setRenderTarget(null);
+  renderer.render(postScene, postCam);
   requestAnimationFrame(frame);
 }
+
+const portrait = document.getElementById('portrait');
+portrait.width = DOG_FACE.width; portrait.height = DOG_FACE.height;
+portrait.getContext('2d').drawImage(DOG_FACE, 0, 0);
 
 initTasks();
 setView('overview');

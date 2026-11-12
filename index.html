@@ -13,7 +13,7 @@
   <canvas id="scene"></canvas>
 
   <header id="topbar">
-    <h1>🐾 巴福柔照護任務</h1>
+    <h1>巴福柔照護任務</h1>
     <span id="room-name">客廳</span>
     <button id="tasks-toggle" aria-expanded="false">任務清單</button>
   </header>
@@ -33,12 +33,16 @@
 
   <div id="joystick" hidden><div id="stick"></div></div>
 
-  <nav id="views" aria-label="視角">
-    <button data-view="overview" class="active">🏠 俯瞰</button>
-    <button data-view="human">🧍 人</button>
-    <button data-view="dog">🐕 狗</button>
-    <button data-view="cat">🐈 貓</button>
-  </nav>
+  <footer id="hud">
+    <div class="cell stat"><b id="task-count">0/0</b><small>任務</small></div>
+    <div class="cell face"><canvas id="portrait"></canvas><small>巴福柔</small></div>
+    <nav id="views" class="cell" aria-label="視角">
+      <button data-view="overview" class="active">俯瞰</button>
+      <button data-view="human">人</button>
+      <button data-view="dog">狗</button>
+      <button data-view="cat">貓</button>
+    </nav>
+  </footer>
 
   <script type="module" src="js/main.js"></script>
 </body>

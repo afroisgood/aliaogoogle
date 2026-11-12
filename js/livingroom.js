@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { DOG_SIDE, CAT_LOAF } from './pixelart.js';
 
 // 座標：x 向東（+）、z 向南（+，大門側）、y 向上。單位：公尺。
 // 尺寸為依照片與手繪平面圖估計。
@@ -12,56 +13,63 @@ export const OBSTACLES = [];
 
 /* ---------- 貼圖 ---------- */
 
+function pixelTexture(c) {
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.magFilter = t.minFilter = THREE.NearestFilter;
+  t.generateMipmaps = false;
+  return t;
+}
+
+// 低解析度點陣貼圖（復古 FPS 風格）
 function canvasTexture(size, draw) {
   const c = document.createElement('canvas');
   c.width = c.height = size;
   draw(c.getContext('2d'), size);
-  const t = new THREE.CanvasTexture(c);
-  t.wrapS = t.wrapT = THREE.RepeatWrapping;
-  t.colorSpace = THREE.SRGBColorSpace;
-  t.anisotropy = 8;
-  return t;
+  return pixelTexture(c);
+}
+
+// 逐像素雜訊
+function speckle(g, s, base, spread) {
+  for (let y = 0; y < s; y++) for (let x = 0; x < s; x++) {
+    const [h, sat, l] = base;
+    g.fillStyle = `hsl(${h}, ${sat}%, ${l + (Math.random() - 0.5) * spread}%)`;
+    g.fillRect(x, y, 1, 1);
+  }
 }
 
 // 米色地磚，交丁鋪法；一張貼圖 = 0.6m x 0.6m
 function tileTexture() {
-  return canvasTexture(512, (g, s) => {
-    g.fillStyle = '#8f7f5c';
-    g.fillRect(0, 0, s, s);
-    const t = s / 2, gap = 5;
-    const tile = (x, y) => {
-      const l = 74 + Math.random() * 5;
-      g.fillStyle = `hsl(42, 45%, ${l}%)`;
-      g.fillRect(x + gap / 2, y + gap / 2, t - gap, t - gap);
-      for (let i = 0; i < 260; i++) {
-        g.fillStyle = `rgba(${Math.random() < .5 ? '255,250,230' : '150,120,70'},.07)`;
-        g.fillRect(x + gap + Math.random() * (t - 2 * gap), y + gap + Math.random() * (t - 2 * gap), 3, 3);
-      }
-    };
-    tile(0, 0); tile(t, 0);
-    tile(-t / 2, t); tile(t / 2, t); tile(t * 1.5, t);
+  return canvasTexture(32, (g, s) => {
+    speckle(g, s, [42, 42, 74], 9);
+    g.fillStyle = '#7d6d4c';
+    const t = s / 2;
+    g.fillRect(0, 0, s, 1); g.fillRect(0, t, s, 1);
+    g.fillRect(0, 0, 1, t); g.fillRect(t, 0, 1, t);
+    g.fillRect(t / 2, t, 1, t); g.fillRect(t * 1.5, t, 1, t);
   });
 }
 
 function woodTexture(base, dark, planks = 1) {
-  return canvasTexture(512, (g, s) => {
+  return canvasTexture(32, (g, s) => {
     g.fillStyle = base;
     g.fillRect(0, 0, s, s);
-    for (let i = 0; i < 420; i++) {
-      g.strokeStyle = dark;
-      g.globalAlpha = 0.04 + Math.random() * 0.1;
-      g.lineWidth = 1 + Math.random() * 2;
-      const x = Math.random() * s;
-      g.beginPath();
-      g.moveTo(x, 0);
-      g.bezierCurveTo(x + 8 * Math.random(), s / 3, x - 8 * Math.random(), s * 2 / 3, x, s);
-      g.stroke();
-    }
-    g.globalAlpha = 0.55;
     g.fillStyle = dark;
-    for (let i = 0; i < planks; i++) g.fillRect((i * s) / planks, 0, 3, s);
+    for (let x = 0; x < s; x++) {
+      g.globalAlpha = Math.random() * 0.22;
+      g.fillRect(x, 0, 1, s);
+      for (let k = 0; k < 3; k++) { g.globalAlpha = 0.12; g.fillRect(x, Math.floor(Math.random() * s), 1, 3); }
+    }
+    g.globalAlpha = 0.7;
+    for (let i = 0; i < planks; i++) g.fillRect(Math.round((i * s) / planks), 0, 1, s);
     g.globalAlpha = 1;
   });
+}
+
+// 牆面：帶顆粒的米白漆
+function wallTexture() {
+  return canvasTexture(32, (g, s) => speckle(g, s, [50, 28, 86], 7));
 }
 
 /* ---------- 小工具 ---------- */
@@ -78,7 +86,10 @@ function box(parent, w, h, d, mat, x, y, z) {
 
 // 單面牆：只從室內看得到，俯瞰時不會擋住視線
 function wall(parent, mat, cx, cy, cz, w, h, rotY) {
-  const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat);
+  const geo = new THREE.PlaneGeometry(w, h);
+  const uv = geo.attributes.uv;                       // 貼圖每 0.8m 重複一次
+  for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * w / 0.8, uv.getY(i) * h / 0.8);
+  const m = new THREE.Mesh(geo, mat);
   m.position.set(cx, cy, cz);
   m.rotation.y = rotY;
   m.receiveShadow = true;
@@ -106,7 +117,7 @@ function ball(parent, r, mat, x, y, z, sx = 1, sy = 1, sz = 1) {
 /* ---------- 房間外殼 ---------- */
 
 function buildShell(g) {
-  const wallMat = std(0xe9e6d6, { roughness: 0.55 });
+  const wallMat = std(0xffffff, { map: wallTexture(), roughness: 0.9 });
   const tiles = tileTexture();
 
   const floorTex = tiles.clone();
@@ -374,6 +385,8 @@ function buildNorthWall(g) {
 }
 
 // 沙發（面向西側電視）、白色櫃子
+// 沙發北端與松木層架之間留約 0.7m 走道
+const SOFA_Z = 0.2, CAB_Z = 1.48;
 function buildCenter(g) {
   const fabric = std(0xa9a9a4, { roughness: 1 });
   const sage = std(0x9fb0a3, { roughness: 1 });
@@ -381,8 +394,8 @@ function buildCenter(g) {
   const leg = std(0xd8b98a);
 
   const sofa = new THREE.Group();
-  sofa.position.set(0.75, 0, -0.15);
-  const L = 1.9, Dp = 0.85;
+  sofa.position.set(0.75, 0, SOFA_Z);
+  const L = 1.7, Dp = 0.85;
   box(sofa, Dp, 0.2, L, fabric, 0, 0.27, 0);                         // 底座
   box(sofa, Dp - 0.22, 0.12, L - 0.24, fabric, -0.1, 0.42, 0);       // 座墊
   box(sofa, 0.2, 0.62, L, fabric, Dp / 2 - 0.1, 0.5, 0);             // 椅背
@@ -396,16 +409,16 @@ function buildCenter(g) {
   box(sofa, 0.55, 0.03, 1.1, cream, -0.12, 0.495, 0.1).rotation.y = 0.05; // 白色毯子
   for (const sx of [-1, 1]) for (const sz of [-1, 1]) cyl(sofa, 0.02, 0.014, 0.17, leg, sx * (Dp / 2 - 0.07), 0.085, sz * (L / 2 - 0.08), 8);
   g.add(sofa);
-  OBSTACLES.push([0.75 - Dp / 2, 0.75 + Dp / 2, -0.15 - L / 2, -0.15 + L / 2]);
+  OBSTACLES.push([0.75 - Dp / 2, 0.75 + Dp / 2, SOFA_Z - L / 2, SOFA_Z + L / 2]);
 
   // 沙發上的後背包
-  box(g, 0.3, 0.36, 0.2, std(0x5d6456, { roughness: 1 }), 0.72, 0.66, 0.55);
+  box(g, 0.3, 0.36, 0.2, std(0x5d6456, { roughness: 1 }), 0.72, 0.66, SOFA_Z + 0.55);
 
   // 白色雙門櫃（門朝東、背板朝西）
   const white = std(0xf6f6f4, { roughness: 0.4 });
   const cab = new THREE.Group();
-  cab.position.set(0.95, 0, 1.25);
-  const cw = 0.42, cl = 0.8, ch = 1.2;
+  cab.position.set(0.95, 0, CAB_Z);
+  const cw = 0.42, cl = 0.75, ch = 1.2;
   box(cab, cw, ch, cl, white, 0, ch / 2, 0);
   box(cab, 0.005, ch - 0.04, cl - 0.02, std(0xa98c62, { roughness: 0.9 }), -cw / 2 - 0.003, ch / 2, 0); // 背板
   box(cab, 0.004, ch - 0.12, 0.006, std(0xcfcfcc), cw / 2 + 0.002, ch / 2 + 0.03, 0);                  // 門縫
@@ -414,7 +427,7 @@ function buildCenter(g) {
   cyl(cab, 0.012, 0.012, 0.03, knob, cw / 2 + 0.015, 0.95, 0.06, 10).rotation.z = Math.PI / 2;
   box(cab, 0.2, 0.05, 0.003, std(0xf2a5c8), 0, 1.08, -cl / 2 - 0.002);                                 // 粉紅便條
   g.add(cab);
-  OBSTACLES.push([0.95 - cw / 2, 0.95 + cw / 2, 1.25 - cl / 2, 1.25 + cl / 2]);
+  OBSTACLES.push([0.95 - cw / 2, 0.95 + cw / 2, CAB_Z - cl / 2, CAB_Z + cl / 2]);
 }
 
 // 東牆與門口：吸塵器、插座、配電箱、腳踏墊、拖鞋、貓用品
@@ -448,10 +461,10 @@ function buildEastAndEntry(g) {
   }
 
   // 貓飼料袋、收納盒、貓碗架
-  box(g, 0.14, 0.42, 0.3, std(0x6f9f66, { roughness: 0.9 }), 1.22, 0.21, 0.95);
-  const bin = box(g, 0.28, 0.2, 0.36, new THREE.MeshStandardMaterial({ color: 0xd9e3ea, transparent: true, opacity: 0.6, roughness: 0.3 }), 1.3, 0.1, HD - 0.3);
+  box(g, 0.14, 0.42, 0.3, std(0x6f9f66, { roughness: 0.9 }), 1.24, 0.21, 1.25);
+  const bin = box(g, 0.28, 0.2, 0.36, new THREE.MeshStandardMaterial({ color: 0xd9e3ea, transparent: true, opacity: 0.6, roughness: 0.3 }), 1.34, 0.1, HD - 0.25);
   bin.castShadow = false;
-  box(g, 0.29, 0.02, 0.37, std(0x8c98a6), 1.3, 0.21, HD - 0.3);
+  box(g, 0.29, 0.02, 0.37, std(0x8c98a6), 1.34, 0.21, HD - 0.25);
   cyl(g, 0.1, 0.085, 0.1, std(0xb98652), 0.25, 0.05, HD - 0.5);
   cyl(g, 0.085, 0.07, 0.03, std(0xe8e2d4), 0.25, 0.1, HD - 0.5);
 
@@ -470,43 +483,13 @@ function buildEastAndEntry(g) {
 
 /* ---------- 巴福柔與貓 ---------- */
 
-function buildDog() {
-  const d = new THREE.Group();
-  const fur = std(0x121214, { roughness: 0.55 });
-  ball(d, 0.17, fur, 0, 0.46, 0, 1, 1, 2.1);            // 身體（頭朝 -z）
-  ball(d, 0.15, fur, 0, 0.5, -0.24, 1, 1.05, 1.1);      // 胸
-  ball(d, 0.115, fur, 0, 0.66, -0.42);                  // 頭
-  ball(d, 0.06, fur, 0, 0.63, -0.53, 1, 0.85, 1.5);     // 吻部
-  ball(d, 0.018, std(0x050505, { roughness: 0.2 }), 0, 0.645, -0.615);
-  for (const s of [-1, 1]) {
-    const ear = ball(d, 0.05, fur, s * 0.095, 0.71, -0.38, 0.5, 1.2, 0.9);
-    ear.rotation.z = s * -0.5;
-    ball(d, 0.016, std(0x3a2a1a, { roughness: 0.2 }), s * 0.05, 0.69, -0.515);
-    cyl(d, 0.035, 0.028, 0.36, fur, s * 0.09, 0.18, -0.27, 10);
-    cyl(d, 0.04, 0.028, 0.36, fur, s * 0.09, 0.18, 0.26, 10);
-  }
-  const tail = cyl(d, 0.022, 0.012, 0.34, fur, 0, 0.6, 0.45, 8);
-  tail.rotation.x = 0.9;
-  return d;
-}
-
-function buildCat() {
-  const c = new THREE.Group();
-  const fur = std(0x6b5a48, { roughness: 0.9 });
-  const dark = std(0x3a3028, { roughness: 0.9 });
-  ball(c, 0.13, fur, 0, 0.11, 0, 1, 0.85, 1.5);         // 母雞蹲
-  for (const dz of [-0.08, 0, 0.08]) ball(c, 0.131, dark, 0, 0.112, dz, 0.98, 0.84, 0.12);
-  ball(c, 0.075, fur, 0, 0.2, -0.18);
-  for (const s of [-1, 1]) {
-    const ear = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.055, 4), fur);
-    ear.position.set(s * 0.045, 0.275, -0.18);
-    c.add(ear);
-    ball(c, 0.011, std(0xb7c24a, { roughness: 0.2 }), s * 0.03, 0.21, -0.248);
-  }
-  ball(c, 0.01, std(0xc98a80), 0, 0.19, -0.255);
-  const tail = cyl(c, 0.018, 0.014, 0.2, dark, 0.12, 0.03, 0.06, 8);
-  tail.rotation.x = Math.PI / 2;
-  return c;
+// 點陣圖立牌：永遠面向鏡頭，底部貼地
+function sprite(canvas, height) {
+  const mat = new THREE.SpriteMaterial({ map: pixelTexture(canvas), alphaTest: 0.5 });
+  const sp = new THREE.Sprite(mat);
+  sp.center.set(0.5, 0);
+  sp.scale.set(height * canvas.width / canvas.height, height, 1);
+  return sp;
 }
 
 /* ---------- 組裝 ---------- */
@@ -520,26 +503,20 @@ export function buildLivingRoom(scene) {
   buildEastAndEntry(g);
 
   // 巴福柔站在沙發後方通往走廊的走道
-  const dog = buildDog();
+  const dog = sprite(DOG_SIDE, 0.72);
   dog.position.set(1.72, 0, -0.55);
-  dog.rotation.y = Math.PI * 0.8;
   g.add(dog);
 
   // 貓趴在白色櫃子上
-  const cat = buildCat();
-  cat.position.set(0.95, 1.2, 1.25);
-  cat.rotation.y = Math.PI * 0.35;
+  const cat = sprite(CAT_LOAF, 0.2);
+  cat.position.set(0.95, 1.2, CAB_Z);
   g.add(cat);
 
   // 燈光：吸頂燈
-  g.add(new THREE.HemisphereLight(0xfff6e6, 0xa89878, 1.5));
-  const spot = new THREE.SpotLight(0xfff0d8, 2.6, 0, 1.3, 0.6, 0);
+  g.add(new THREE.HemisphereLight(0xffffff, 0xb0a890, 2.1));
+  const spot = new THREE.SpotLight(0xfff0d8, 1.6, 0, 1.3, 0.6, 0);
   spot.position.set(-0.2, H - 0.08, 0.2);
   spot.target.position.set(-0.2, 0, 0.2);
-  spot.castShadow = true;
-  spot.shadow.mapSize.set(2048, 2048);
-  spot.shadow.bias = -0.0015;
-  spot.shadow.radius = 4;
   g.add(spot, spot.target);
   cyl(g, 0.16, 0.18, 0.06, new THREE.MeshBasicMaterial({ color: 0xfffbea }), -0.2, H - 0.03, 0.2).castShadow = false;
 

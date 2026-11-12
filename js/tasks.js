@@ -31,6 +31,7 @@ function renderList(el, tasks, done) {
       done[t.id] = box.checked;
       li.classList.toggle('done', box.checked);
       localStorage.setItem(STORE_KEY, JSON.stringify(done));
+      updateCount(done);
     });
     label.append(box, text);
     li.appendChild(label);
@@ -38,8 +39,14 @@ function renderList(el, tasks, done) {
   }
 }
 
+function updateCount(done) {
+  const all = [...mainTasks, ...sideTasks];
+  document.getElementById('task-count').textContent = `${all.filter(t => done[t.id]).length}/${all.length}`;
+}
+
 export function initTasks() {
   const done = loadDone();
+  updateCount(done);
   renderList(document.getElementById('main-tasks'), mainTasks, done);
   renderList(document.getElementById('side-tasks'), sideTasks, done);
 
