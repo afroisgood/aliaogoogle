@@ -11,6 +11,11 @@ export const WALK_STEPS = [
   { photo: '08.webp', text: '直走到底。會經過左邊的橘色屋頂涼亭。' },
   { photo: '09.webp', text: '走到底的路口，右轉。' },
   { photo: '10.webp', text: '沿著這條路走到路口，準備折返。右邊是藍色鐵皮屋頂和圓柱。' },
+  { photo: '11.webp', text: '折返後直走。右邊是有溜滑梯的遊戲場和橘色屋頂涼亭。' },
+  { photo: '12.webp', text: '過路口繼續直走，走進兩棟房子中間的巷子。' },
+  { photo: '13.webp', text: '沿著巷子直走。' },
+  { photo: '14.webp', text: '繼續直走。左邊是紅白相間的大樓。' },
+  { photo: '15.webp', text: '走到中興街的路口，左轉。' },
 ];
 
 // 開啟散步頁；走完按「到家了」時呼叫 onDone
