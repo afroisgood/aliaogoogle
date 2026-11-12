@@ -317,3 +317,27 @@ button.primary { background: #8a1c14; color: #fff; }
 .coach-step { color: #ffd23c; font-size: 13px; }
 #coach button { padding: 6px 10px; font-size: 14px; }
 #coach-skip { margin-left: auto; }
+
+/* ----- 和巴福柔互動的指令選單 ----- */
+#pet-menu {
+  position: fixed;
+  left: 50%;
+  bottom: calc(var(--hud-h) + env(safe-area-inset-bottom) + 40px);
+  transform: translateX(-50%);
+  z-index: 12;
+  width: min(520px, calc(100vw - 20px));
+  padding: 8px 10px 10px;
+  background: rgba(0, 0, 0, .85);
+  border: 2px solid #ffd23c;
+  text-align: center;
+}
+#pet-menu p { margin: 0 0 8px; font-size: 15px; color: #ffd23c; }
+.pet-actions { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+.pet-actions button { flex: 1 1 auto; padding: 10px 8px; font-size: 15px; }
+.pet-actions button:disabled { opacity: .4; }
+.pet-actions [data-act="close"] { flex: 0 0 auto; }
+
+/* 被踹的時候畫面閃一下紅 */
+#flash { position: fixed; inset: 0; z-index: 11; background: #c01810; opacity: 0; pointer-events: none; }
+#flash.on { animation: flash .45s ease-out; }
+@keyframes flash { from { opacity: .55; } to { opacity: 0; } }

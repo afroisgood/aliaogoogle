@@ -103,6 +103,7 @@ const lerp = (a, b, k) => a + (b - a) * k;
 export function animatePet(o, dt, time) {
   const a = o.userData.anim, p = o.position, size = o.scale.x;
   if (a.px === null) { a.px = p.x; a.pz = p.z; }
+  if (o.userData.pose === 'frozen') { a.px = p.x; a.pz = p.z; return; }   // 被點穴：整隻定格
   const v = Math.hypot(p.x - a.px, p.z - a.pz) / Math.max(dt, 1e-3);
   a.px = p.x; a.pz = p.z;
   a.speed = lerp(a.speed, Math.min(v, 5), Math.min(1, dt * 10));
@@ -136,6 +137,32 @@ export function animatePet(o, dt, time) {
     // 尾巴：走路時小幅擺動，停下來或吃飯時搖得比較開心
     a.tail.rotation.z = Math.sin(t * (moving ? 7 : 9)) * (moving ? 0.2 : 0.45);
     a.tail.rotation.x = 0.6 + Math.sin(a.phase) * 0.08 * m;
+
+    // 互動的姿勢（play.js 設定 o.userData.pose）：握手、趴下、踹人
+    const k = a.poses || (a.poses = { shake: 0, down: 0, kick: 0 });
+    for (const name in k) k[name] = lerp(k[name], o.userData.pose === name ? 1 : 0, Math.min(1, dt * (name === 'kick' ? 16 : 6)));
+    const [fl, fr, bl, br] = a.legs;
+    if (k.shake > 0.01) {              // 握手：坐下（屁股著地、前腳撐直），舉起右前腳晃一晃
+      const q = k.shake;
+      bodyX += 0.45 * q;
+      bodyY += 0.03 * q;
+      fl.rotation.x = lerp(fl.rotation.x, -0.45, q);
+      fr.rotation.x = lerp(fr.rotation.x, -1.75 + Math.sin(time * 9) * 0.18, q);
+      bl.rotation.x = lerp(bl.rotation.x, -1.5, q);
+      br.rotation.x = lerp(br.rotation.x, -1.5, q);
+      headX = lerp(headX, -0.3, q);
+      headY = lerp(headY, 0, q);
+    }
+    if (k.down > 0.01) {               // 趴下：四隻腳往前收平，肚子貼地
+      const q = k.down;
+      bodyY -= 0.27 * q;
+      for (const leg of a.legs) leg.rotation.x = lerp(leg.rotation.x, -1.45, q);
+      headX = lerp(headX, -0.15, q);
+    }
+    if (k.kick > 0.01) {               // 踹人：右後腳往後上方踢出去，身體往前頂
+      br.rotation.x = lerp(br.rotation.x, 1.35, k.kick);
+      bodyX -= 0.12 * k.kick;
+    }
   } else {
     // 貓：停超過兩秒就趴下（腳收進身體下面、尾巴捲到身邊），要走了再站起來
     a.sit = lerp(a.sit, a.idle > 2 ? 1 : 0, Math.min(1, dt * (moving ? 9 : 2.5)));

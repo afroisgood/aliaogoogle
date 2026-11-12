@@ -12,6 +12,7 @@ import { initGate } from './gate.js';
 import { initWander } from './wander.js';
 import { initLitter, initCatFeed } from './side.js';
 import { initFlow } from './flow.js';
+import { initPlay } from './play.js';
 
 const canvas = document.getElementById('scene');
 // 先算到一張貼圖，再用後製決定風格：低解析度放大、色階、網點、描邊、色調
@@ -114,7 +115,7 @@ const clickables = [...missions, ...sides, gate];
 // 用牠們的視角時，那隻本身也不動
 const wander = initWander([
   { obj: dog, r: 0.25, front: 0.55, speed: 0.8, rest: [3, 9],
-    free: () => mode !== 'dog' && !mission.state.leashed && !feed.owns() && !mission.wants('dog') },
+    free: () => mode !== 'dog' && !mission.state.leashed && !feed.owns() && !mission.wants('dog') && !play.busy() },
   { obj: cat, r: 0.12, front: 0.28, speed: 0.6, rest: [4, 14], free: () => mode !== 'cat' },
   { obj: kitten, r: 0.1, front: 0.22, speed: 0.75, rest: [2, 8], free: () => true },
 ], () => (mode === 'overview' ? null : { x: fp.x, z: fp.z, r: VIEWS[mode].radius + 0.1 }));
@@ -136,6 +137,11 @@ const VIEWS = {
 let mode = 'overview';
 const orbit = { theta: 0.55, phi: 0.85, r: 7.5, target: new THREE.Vector3(0, 0.9, 0) };
 const fp = { x: 0, z: 0, yaw: 0, pitch: 0 };
+
+// 和巴福柔互動（握手、趴下、踹人、被人騎、點穴）：沒被牽著、沒在吃飯、任務沒有要用到牠的時候才行
+const play = initPlay({ dog, fp, walkable,
+  canPlay: () => mode !== 'overview' && mode !== 'dog' && !mission.state.leashed && !feed.owns() && !mission.wants('dog') });
+clickables.push(play);
 
 const hint = document.getElementById('hint');
 const joystick = document.getElementById('joystick');
@@ -290,6 +296,7 @@ function walkTo(clientX, clientY) {
   for (let o = hit.object; o && !id; o = o.parent) id = o.userData.interact;
   const m = id && clickables.find(m => m.wants(id));
   pending = m ? { m, id, x: hit.point.x, z: hit.point.z } : null;
+  if (m && m.notice) m.notice(id);
   if (pending && tryInteract()) return;
   const pts = findPath(fp.x, fp.z, hit.point.x, hit.point.z, VIEWS[mode].radius);
   if (!pts.length) return;
@@ -469,8 +476,16 @@ function frame() {
     move(dt);
     followLeash(dt, clock.elapsedTime);
     southDoors.visible = true;
-    camera.position.set(fp.x, VIEWS[mode].eye, fp.z);
-    camera.rotation.set(fp.pitch, fp.yaw, 0);
+    play.update(dt, clock.elapsedTime);
+    const riding = play.state.riding;
+    if (riding) {                           // 騎在巴福柔背上：牠跟著人的位置和方向走，視線降到牠背上的高度
+      dog.position.set(fp.x, 0, fp.z);
+      dog.rotation.y += Math.atan2(Math.sin(fp.yaw - dog.rotation.y), Math.cos(fp.yaw - dog.rotation.y)) * Math.min(1, dt * 6);
+    }
+    const jolt = play.state.shake;          // 被踹的時候鏡頭晃一下
+    camera.position.set(fp.x + (riding ? Math.sin(fp.yaw) * 0.12 : 0),
+      (riding ? 1.2 : VIEWS[mode].eye) + Math.sin(clock.elapsedTime * 47) * 0.04 * jolt, fp.z + (riding ? Math.cos(fp.yaw) * 0.12 : 0));
+    camera.rotation.set(fp.pitch, fp.yaw, Math.sin(clock.elapsedTime * 38) * 0.09 * jolt);
   }
   const label = currentRoomName();
   if (label && roomChip.textContent !== label + ' ▸') roomChip.textContent = label + ' ▸';
@@ -512,4 +527,4 @@ setView('overview');
 frame();
 
 // 方便除錯與之後擴充
-window.__app = { setView, goRoom, fp, orbit, mission, clean, feed, litter, catFeed, gate, dog, cat, kitten };
+window.__app = { setView, goRoom, fp, orbit, mission, clean, feed, litter, catFeed, gate, play, dog, cat, kitten };
