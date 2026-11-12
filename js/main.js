@@ -49,11 +49,11 @@ const HD = ROOM.D / 2, HW = ROOM.W / 2;
 const VIEWS = {
   overview: { hint: '拖曳旋轉・滾輪或雙指縮放' },
   human: { eye: 1.6, speed: 1.8, radius: 0.18, start: [1.7, 1.5], yaw: 0.72, pitch: -0.12, fov: 75,
-    hint: '人的視角（從大門進來）・拖曳環顧・搖桿或 WASD 移動' },
+    hint: '人的視角（從大門進來）・點一下地板走過去・拖曳環顧' },
   dog: { eye: 0.62, speed: 2.4, radius: 0.2, start: [1.72, -0.55], yaw: Math.PI * 0.8, pitch: 0.12, fov: 80,
-    hint: '巴福柔的視角・拖曳環顧・搖桿或 WASD 移動' },
+    hint: '巴福柔的視角・點一下地板走過去・拖曳環顧' },
   cat: { eye: 0.24, speed: 1.6, radius: 0.12, start: [0.1, 1.2], yaw: 0.4, pitch: 0.25, fov: 80,
-    hint: '貓的視角・拖曳環顧・搖桿或 WASD 移動' },
+    hint: '貓的視角・點一下地板走過去・拖曳環顧' },
 };
 
 let mode = 'overview';
@@ -70,6 +70,7 @@ function setView(name) {
   document.querySelectorAll('#views button').forEach(b => b.classList.toggle('active', b.dataset.view === name));
   hint.textContent = v.hint;
   joystick.hidden = name === 'overview';
+  stopWalk();
   scene.fog = name === 'overview' ? null : fog;
   dog.visible = name !== 'dog';
   cat.visible = name !== 'cat';
@@ -99,6 +100,7 @@ function goRoom(i) {
   orbit.r = room.r;
   orbit.theta = room.theta;
   orbit.phi = 0.85;
+  stopWalk();
   if (mode !== 'overview') {
     [fp.x, fp.z, fp.yaw] = room.spot;
     fp.pitch = 0;
@@ -119,7 +121,7 @@ let pinchDist = 0;
 
 canvas.addEventListener('pointerdown', e => {
   canvas.setPointerCapture(e.pointerId);
-  pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  pointers.set(e.pointerId, { x: e.clientX, y: e.clientY, x0: e.clientX, y0: e.clientY, t: performance.now() });
   pinchDist = 0;
 });
 canvas.addEventListener('pointermove', e => {
@@ -143,7 +145,13 @@ canvas.addEventListener('pointermove', e => {
   }
 });
 const release = e => { pointers.delete(e.pointerId); pinchDist = 0; };
-canvas.addEventListener('pointerup', release);
+canvas.addEventListener('pointerup', e => {
+  const p = pointers.get(e.pointerId);
+  // 沒有拖曳的短按＝點擊：走到點的位置
+  if (p && mode !== 'overview' && pointers.size === 1 &&
+      Math.hypot(e.clientX - p.x0, e.clientY - p.y0) < 8 && performance.now() - p.t < 500) walkTo(e.clientX, e.clientY);
+  release(e);
+});
 canvas.addEventListener('pointercancel', release);
 
 function zoom(factor) {
@@ -190,6 +198,81 @@ function walkable(x, z, r) {
   return !OBSTACLES.some(([x1, x2, z1, z2]) => x > x1 - r && x < x2 + r && z > z1 - r && z < z2 + r);
 }
 
+/* ---------- 點擊移動：在 10 公分格線上找路，會自己繞過家具、穿過門 ---------- */
+
+const CELL = 0.1;
+const raycaster = new THREE.Raycaster();
+const marker = new THREE.Mesh(new THREE.RingGeometry(0.07, 0.13, 4), new THREE.MeshBasicMaterial({ color: 0xffd23c, side: THREE.DoubleSide, fog: false }));
+marker.rotation.x = -Math.PI / 2;
+marker.visible = false;
+scene.add(marker);
+let path = null;
+
+function findPath(tx, tz, r) {
+  const x0 = Math.min(...WALK.map(w => w[0])), z0 = Math.min(...WALK.map(w => w[2]));
+  const nx = Math.ceil((Math.max(...WALK.map(w => w[1])) - x0) / CELL) + 1;
+  const nz = Math.ceil((Math.max(...WALK.map(w => w[3])) - z0) / CELL) + 1;
+  const px = i => x0 + (i % nx) * CELL, pz = i => z0 + Math.floor(i / nx) * CELL;
+  const ok = i => walkable(px(i), pz(i), r);
+  const start = Math.round((fp.x - x0) / CELL) + Math.round((fp.z - z0) / CELL) * nx;
+  const prev = new Int32Array(nx * nz).fill(-2);
+  prev[start] = -1;
+  const queue = [start];
+  let best = start, bestD = Infinity;
+  for (let q = 0; q < queue.length; q++) {
+    const i = queue[q], cx = i % nx, cz = Math.floor(i / nx);
+    const d = Math.hypot(px(i) - tx, pz(i) - tz);
+    if (d < bestD) { bestD = d; best = i; }
+    for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]]) {
+      const ax = cx + dx, az = cz + dz;
+      if (ax < 0 || az < 0 || ax >= nx || az >= nz) continue;
+      const j = ax + az * nx;
+      if (prev[j] !== -2 || !ok(j)) continue;
+      if (dx && dz && (!ok(cx + dx + cz * nx) || !ok(cx + az * nx))) continue;   // 不切牆角
+      prev[j] = i;
+      queue.push(j);
+    }
+  }
+  const pts = [];
+  for (let i = best; i !== start && i >= 0; i = prev[i]) pts.push([px(i), pz(i)]);
+  return pts.reverse();
+}
+
+function walkTo(clientX, clientY) {
+  const rect = canvas.getBoundingClientRect();
+  raycaster.setFromCamera(new THREE.Vector2(
+    ((clientX - rect.left) / rect.width) * 2 - 1, -((clientY - rect.top) / rect.height) * 2 + 1), camera);
+  const hit = raycaster.intersectObjects(scene.children, true).find(h => h.object !== marker && h.object.visible);
+  if (!hit) return;
+  const pts = findPath(hit.point.x, hit.point.z, VIEWS[mode].radius);
+  if (!pts.length) return;
+  path = pts;
+  marker.position.set(pts[pts.length - 1][0], 0.03, pts[pts.length - 1][1]);
+  marker.visible = true;
+}
+
+function stopWalk() { path = null; marker.visible = false; }
+
+function followPath(dt) {
+  const v = VIEWS[mode];
+  let step = v.speed * dt;
+  while (path.length && step > 0) {
+    const [tx, tz] = path[0], d = Math.hypot(tx - fp.x, tz - fp.z);
+    if (d <= step) { fp.x = tx; fp.z = tz; step -= d; path.shift(); }
+    else { fp.x += (tx - fp.x) / d * step; fp.z += (tz - fp.z) / d * step; step = 0; }
+  }
+  if (!path.length) return stopWalk();
+  // 邊走邊把視線轉向前進方向
+  const [lx, lz] = path[Math.min(6, path.length - 1)];
+  if (Math.hypot(lx - fp.x, lz - fp.z) > 0.35 && !pointers.size) {
+    const want = Math.atan2(-(lx - fp.x), -(lz - fp.z));
+    const diff = Math.atan2(Math.sin(want - fp.yaw), Math.cos(want - fp.yaw));
+    fp.yaw += diff * Math.min(1, dt * 4);
+    fp.pitch += (0 - fp.pitch) * Math.min(1, dt * 2);
+  }
+  marker.rotation.z += dt * 3;
+}
+
 function move(dt) {
   const v = VIEWS[mode];
   let f = -joy.y, s = joy.x;
@@ -198,7 +281,8 @@ function move(dt) {
   if (keys.has('KeyD') || keys.has('ArrowRight')) s += 1;
   if (keys.has('KeyA') || keys.has('ArrowLeft')) s -= 1;
   const len = Math.hypot(f, s);
-  if (!len) return;
+  if (!len) { if (path) followPath(dt); return; }
+  stopWalk();          // 手動移動會取消自動行走
   if (len > 1) { f /= len; s /= len; }
   const sin = Math.sin(fp.yaw), cos = Math.cos(fp.yaw);
   const dx = (-sin * f + cos * s) * v.speed * dt;

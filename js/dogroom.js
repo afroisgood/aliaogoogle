@@ -126,37 +126,33 @@ function buildBath(g) {
   box(g, 0.045, 0.2, 0.36, std(0xd6d6d2), x2 - 0.05, 0.3, zN + 0.38);
   ball(g, 0.03, chrome, x2 - 0.09, 1.0, zN + 0.66);
 
-  // 淋浴間：最裡面靠東側，奶油色框、霧面拉門（東半邊開著）
-  const sx1 = 0.0, sz = zS - 1.0, sh = 1.9;
+  // 淋浴間：最裡面整個寬度都是。奶油色框、霧面拉門（進門看過去左半邊開著）
+  const sz = zS - 1.0, sh = 1.9, mid = (x1 + x2) / 2;
   const frosted = new THREE.MeshStandardMaterial({ color: 0xaeb4ba, transparent: true, opacity: 0.75, roughness: 0.6 });
-  box(g, x2 - sx1, 0.1, 0.06, darkTile, (sx1 + x2) / 2, 0.05, sz);                 // 門檻
-  box(g, 0.06, 0.1, zS - sz, darkTile, sx1, 0.05, (sz + zS) / 2);
-  box(g, x2 - sx1, 0.04, 0.05, cream, (sx1 + x2) / 2, sh, sz);                     // 上框
-  for (const x of [sx1, (sx1 + x2) / 2, x2 - 0.02]) box(g, 0.04, sh, 0.05, cream, x, sh / 2, sz);
-  box(g, (x2 - sx1) / 2 - 0.04, sh - 0.14, 0.015, frosted, sx1 + (x2 - sx1) / 4, sh / 2 + 0.03, sz);
-  box(g, 0.05, sh, 0.04, cream, sx1, sh / 2, zS - 0.02);
-  box(g, 0.015, sh - 0.14, zS - sz - 0.06, frosted, sx1, sh / 2 + 0.03, (sz + zS) / 2);
-  box(g, x2 - sx1 - 0.04, 0.35, 0.02, darkTile, (sx1 + x2) / 2, 0.175, zS - 0.01);  // 牆面下緣深色磚
-  OBSTACLES.push([sx1 - 0.03, (sx1 + x2) / 2, sz - 0.04, sz + 0.04], [sx1 - 0.04, sx1 + 0.04, sz, zS]);
+  box(g, x2 - x1, 0.1, 0.06, darkTile, mid, 0.05, sz);                             // 門檻
+  box(g, x2 - x1, 0.04, 0.05, cream, mid, sh, sz);                                 // 上框
+  for (const x of [x1 + 0.02, mid, x2 - 0.02]) box(g, 0.04, sh, 0.05, cream, x, sh / 2, sz);
+  box(g, mid - x1 - 0.04, sh - 0.14, 0.015, frosted, (x1 + mid) / 2, sh / 2 + 0.03, sz);
+  box(g, x2 - x1 - 0.02, 0.35, 0.02, darkTile, mid, 0.175, zS - 0.01);             // 牆面下緣深色磚
+  OBSTACLES.push([x1, mid, sz - 0.04, sz + 0.04]);
   // 淋浴間內的置物架與尿布墊
   box(g, 0.02, 0.06, 0.25, std(0x2f8f6a), x2 - 0.02, 1.15, zS - 0.5);
-  box(g, 0.7, 0.012, 0.5, std(0xf4f4f2, { roughness: 1 }), 0.47, 0.012, zS - 0.5);
+  box(g, 0.7, 0.012, 0.5, std(0xf4f4f2, { roughness: 1 }), 0.4, 0.012, zS - 0.5);
 
-  // 馬桶：靠南牆、淋浴間西側，面向門口
-  const tx = -0.28;
-  box(g, 0.36, 0.36, 0.18, white, tx, 0.6, zS - 0.11);                              // 水箱
-  box(g, 0.3, 0.4, 0.5, white, tx, 0.2, zS - 0.38);                                 // 底座
-  cyl(g, 0.2, 0.17, 0.08, white, tx, 0.42, zS - 0.45).scale.z = 1.25;               // 座圈
-  cyl(g, 0.14, 0.14, 0.085, std(0xb8d8e8, { roughness: 0.2 }), tx, 0.42, zS - 0.45).scale.z = 1.25;
-  const lid = box(g, 0.36, 0.42, 0.03, white, tx, 0.66, zS - 0.22);                 // 掀起的馬桶蓋
-  lid.rotation.x = -0.15;
-  OBSTACLES.push([tx - 0.2, tx + 0.2, zS - 0.72, zS]);
-  // 通馬桶吸把
-  cyl(g, 0.06, 0.07, 0.05, std(0x151515), 0.05 - 0.2, 0.025, zS - 0.95);
-  cyl(g, 0.012, 0.012, 0.42, std(0xb02a2a), 0.05 - 0.2, 0.25, zS - 0.95, 8);
+  // 馬桶：進門右手邊（西牆）靠裡面，緊鄰淋浴間，面向東
+  const tz = sz - 0.32;
+  const toilet = new THREE.Group();
+  toilet.position.set(x1, 0, tz);
+  box(toilet, 0.18, 0.36, 0.36, white, 0.11, 0.6, 0);                              // 水箱
+  box(toilet, 0.5, 0.4, 0.3, white, 0.38, 0.2, 0);                                 // 底座
+  cyl(toilet, 0.2, 0.17, 0.08, white, 0.45, 0.42, 0).scale.x = 1.25;               // 座圈
+  cyl(toilet, 0.14, 0.14, 0.085, std(0xb8d8e8, { roughness: 0.2 }), 0.45, 0.42, 0).scale.x = 1.25;
+  box(toilet, 0.03, 0.42, 0.36, white, 0.23, 0.66, 0).rotation.z = 0.15;           // 掀起的馬桶蓋
+  g.add(toilet);
+  OBSTACLES.push([x1, x1 + 0.72, tz - 0.2, tz + 0.2]);
 
-  // 洗手台、水龍頭、鏡子、玻璃層板（西牆）
-  const kz = zN + 1.05;
+  // 洗手台：進門右手邊（西牆）最靠門口，上方是鏡子與玻璃層板
+  const kz = zN + 0.42;
   box(g, 0.42, 0.16, 0.52, white, x1 + 0.23, 0.78, kz);
   box(g, 0.2, 0.7, 0.24, white, x1 + 0.12, 0.35, kz);
   box(g, 0.28, 0.02, 0.36, std(0xdfe6ea, { roughness: 0.15 }), x1 + 0.25, 0.855, kz);
@@ -167,6 +163,9 @@ function buildBath(g) {
   box(g, 0.05, 0.14, 0.05, std(0xd9c21e), x1 + 0.06, 1.2, kz - 0.15);              // 清潔劑
   box(g, 0.1, 0.05, 0.16, std(0x7fb86a), x1 + 0.07, 1.15, kz + 0.14);              // 濕紙巾
   OBSTACLES.push([x1, x1 + 0.45, kz - 0.27, kz + 0.27]);
+  // 通馬桶吸把（馬桶與洗手台之間）
+  cyl(g, 0.06, 0.07, 0.05, std(0x151515), x1 + 0.55, 0.025, (kz + tz) / 2 + 0.05);
+  cyl(g, 0.012, 0.012, 0.42, std(0xb02a2a), x1 + 0.55, 0.25, (kz + tz) / 2 + 0.05, 8);
 
   // 東牆的毛巾架與置物架
   box(g, 0.24, 0.02, 0.6, chrome, x2 - 0.13, 1.7, zN + 1.3);
@@ -175,9 +174,9 @@ function buildBath(g) {
   box(g, 0.06, 0.2, 0.06, std(0xf0f0e8), x2 - 0.1, 1.5, zN + 1.15);
 
   // 地上的尿布墊、地板排水孔
-  const pad = box(g, 0.45, 0.012, 0.9, std(0xf4f4f2, { roughness: 1 }), 0.25, 0.012, zN + 0.85);
+  const pad = box(g, 0.45, 0.012, 0.9, std(0xf4f4f2, { roughness: 1 }), 0.4, 0.012, zN + 0.95);
   pad.rotation.y = 0.2;
-  box(g, 0.12, 0.006, 0.12, chrome, x1 + 0.5, 0.006, zN + 0.5);
+  box(g, 0.12, 0.006, 0.12, chrome, x1 + 0.6, 0.006, zN + 0.75);
 
   // 吸頂燈與抽風機
   cyl(g, 0.14, 0.16, 0.08, new THREE.MeshBasicMaterial({ color: 0xffffff }), 0.15, H - 0.04, zN + 1.2);
