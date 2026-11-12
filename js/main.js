@@ -287,7 +287,7 @@ scene.add(marker);
 let path = null;
 
 function walkTo(clientX, clientY) {
-  if (play.state.stunned) return;
+  if (play.state.still) return;
   const rect = canvas.getBoundingClientRect();
   raycaster.setFromCamera(new THREE.Vector2(
     ((clientX - rect.left) / rect.width) * 2 - 1, -((clientY - rect.top) / rect.height) * 2 + 1), camera);
@@ -327,7 +327,7 @@ function tryInteract() {
 
 function followPath(dt) {
   const v = VIEWS[mode];
-  let step = v.speed * dt;
+  let step = v.speed * play.speed() * dt;
   while (path.length && step > 0) {
     const [tx, tz] = path[0], d = Math.hypot(tx - fp.x, tz - fp.z);
     if (d <= step) { fp.x = tx; fp.z = tz; step -= d; path.shift(); }
@@ -359,8 +359,8 @@ function move(dt) {
   pending = null;
   if (len > 1) { f /= len; s /= len; }
   const sin = Math.sin(fp.yaw), cos = Math.cos(fp.yaw);
-  const dx = (-sin * f + cos * s) * v.speed * dt;
-  const dz = (-cos * f - sin * s) * v.speed * dt;
+  const dx = (-sin * f + cos * s) * v.speed * play.speed() * dt;
+  const dz = (-cos * f - sin * s) * v.speed * play.speed() * dt;
   if (walkable(fp.x + dx, fp.z, v.radius)) fp.x += dx;
   if (walkable(fp.x, fp.z + dz, v.radius)) fp.z += dz;
 }
@@ -475,7 +475,7 @@ function frame() {
     // 從大門外側俯瞰時先隱藏落地門，才不會擋住室內
     southDoors.visible = focus !== 0 || camera.position.z < HD;
   } else {
-    if (play.state.stunned) { stopWalk(); pending = null; } else move(dt);   // 被點穴：動不了
+    if (play.state.still) { stopWalk(); pending = null; } else move(dt);   // 巴福柔幫忙點穴時站著不動
     followLeash(dt, clock.elapsedTime);
     southDoors.visible = true;
     play.update(dt, clock.elapsedTime);
@@ -485,11 +485,9 @@ function frame() {
       dog.rotation.y += Math.atan2(Math.sin(fp.yaw - dog.rotation.y), Math.cos(fp.yaw - dog.rotation.y)) * Math.min(1, dt * 6);
     }
     const jolt = play.state.shake;          // 被踹的時候鏡頭晃一下
-    const tip = play.state.tip;             // 被點穴：整個人僵直側倒，視線倒到地上
-    const eye = VIEWS[mode].eye * (1 - tip) + Math.min(VIEWS[mode].eye, 0.35) * tip;
     camera.position.set(fp.x + (riding ? Math.sin(fp.yaw) * 0.12 : 0),
-      (riding ? 1.2 : eye) + Math.sin(clock.elapsedTime * 47) * 0.04 * jolt, fp.z + (riding ? Math.cos(fp.yaw) * 0.12 : 0));
-    camera.rotation.set(fp.pitch, fp.yaw, Math.sin(clock.elapsedTime * 38) * 0.09 * jolt + tip * 1.25);
+      (riding ? 1.2 : VIEWS[mode].eye) + Math.sin(clock.elapsedTime * 47) * 0.04 * jolt, fp.z + (riding ? Math.cos(fp.yaw) * 0.12 : 0));
+    camera.rotation.set(fp.pitch, fp.yaw, Math.sin(clock.elapsedTime * 38) * 0.09 * jolt);
   }
   const label = currentRoomName();
   if (label && roomChip.textContent !== label + ' ▸') roomChip.textContent = label + ' ▸';
@@ -499,7 +497,7 @@ function frame() {
   }
   for (const m of [...missions, ...sides]) m.update(clock.elapsedTime);
   flow.update();
-  stunBox.classList.toggle('on', play.state.stunned);
+  stunBox.classList.toggle('on', play.state.still);        // 被按摩時畫面泛一層暖色
   updateCompass(clock.elapsedTime);
   wander.update(dt, clock.elapsedTime);
   for (const o of [dog, cat, kitten]) animatePet(o, dt, clock.elapsedTime);    // 走路、搖尾巴、趴下等動作

@@ -355,6 +355,25 @@ button.primary { background: #8a1c14; color: #fff; }
 #pet-menu.compact p { margin: 0; font-size: 13px; }
 #pet-menu.compact button { padding: 8px 18px; white-space: nowrap; }
 
-/* 被點穴：畫面發青、動不了 */
-#stun { position: fixed; inset: 0; z-index: 11; background: #2a6f8a; opacity: 0; pointer-events: none; transition: opacity .3s; }
-#stun.on { opacity: .28; }
+/* 巴福柔幫忙點穴時：畫面泛一層暖色 */
+#stun { position: fixed; inset: 0; z-index: 11; background: #e8a23c; opacity: 0; pointer-events: none; transition: opacity .4s; }
+#stun.on { opacity: .16; }
+
+/* 身體狀況（痠痛）提示：畫面右下，搖桿的另一邊，不會和上方的目標文字擠在一起 */
+#ache {
+  position: fixed;
+  bottom: calc(var(--hud-h) + env(safe-area-inset-bottom) + 150px);
+  right: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  padding: 4px 10px;
+  background: rgba(60, 10, 8, .88);
+  border: 2px solid #ff6a3c;
+  color: #ffb49a;
+  font-size: 14px;
+  pointer-events: none;
+}
+#ache small { font-size: 11px; color: #e8c020; }
+#ache.new { animation: ache-in 2.4s steps(2, start) 1; }
+@keyframes ache-in { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.18); border-color: #ffd23c; } }

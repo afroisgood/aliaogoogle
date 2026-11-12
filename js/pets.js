@@ -138,7 +138,7 @@ export function animatePet(o, dt, time) {
     a.tail.rotation.x = 0.6 + Math.sin(a.phase) * 0.08 * m;
 
     // 互動的姿勢（play.js 設定 o.userData.pose）：握手、趴下、踹人、點穴
-    const k = a.poses || (a.poses = { shake: 0, down: 0, kick: 0, poke: 0 });
+    const k = a.poses || (a.poses = { shake: 0, down: 0, kick: 0, poke: 0, rear: 0 });
     for (const name in k) k[name] = lerp(k[name], o.userData.pose === name ? 1 : 0, Math.min(1, dt * (name === 'kick' || name === 'poke' ? 14 : 6)));
     const [fl, fr, bl, br] = a.legs;
     if (k.shake > 0.01) {              // 握手：坐下（屁股著地、前腳撐直），舉起右前腳晃一晃
@@ -168,15 +168,16 @@ export function animatePet(o, dt, time) {
       headX = lerp(headX, -0.4, q);
       headY = lerp(headY, 0, q);
     }
-    if (k.poke > 0.01) {               // 點穴：用後腳立起來，右前腳往前一戳
-      const q = k.poke;
-      bodyX += 0.4 * q;
-      bl.rotation.x = lerp(bl.rotation.x, -0.4, q);
-      br.rotation.x = lerp(br.rotation.x, -0.4, q);
-      fl.rotation.x = lerp(fl.rotation.x, -0.3, q);
-      fr.rotation.x = lerp(fr.rotation.x, -1.85, q);
-      headX = lerp(headX, -0.3, q);
-      headY = lerp(headY, 0, q);
+    const up = Math.max(k.poke, k.rear);
+    if (up > 0.01) {                   // 點穴：用後腳立起來，前腳收在胸前（rear），往前按下去（poke）
+      bodyX += 0.4 * up;
+      bl.rotation.x = lerp(bl.rotation.x, -0.4, up);
+      br.rotation.x = lerp(br.rotation.x, -0.4, up);
+      const paw = lerp(-0.9, -1.85, k.poke);
+      fl.rotation.x = lerp(fl.rotation.x, paw, up);
+      fr.rotation.x = lerp(fr.rotation.x, paw, up);
+      headX = lerp(headX, -0.3, up);
+      headY = lerp(headY, 0, up);
     }
   } else {
     // 貓：停超過兩秒就趴下（腳收進身體下面、尾巴捲到身邊），要走了再站起來
