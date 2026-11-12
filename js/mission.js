@@ -84,6 +84,13 @@ export function initMission({ scene, dog, onChange }) {
     onChange();
   }
 
+  // 改做別的任務時中止
+  function stop() {
+    if (!state.active) return;
+    Object.assign(state, { active: false, leashed: false });
+    leash.visible = bag.visible = true;
+  }
+
   function finish() {
     Object.assign(state, { active: false, leashed: false, done: true });
     leash.visible = bag.visible = true;
@@ -113,7 +120,8 @@ export function initMission({ scene, dog, onChange }) {
   }
 
   return {
-    state, start, trigger, update,
+    def: MISSION, state, start, stop, trigger, update,
+    stepTexts: () => MISSION.steps.map(s => s.text),
     wants: id => !!target() && target().id === id,
     hint: () => (target() ? target().hint : ''),
     // 目前做到第幾個步驟（供清單打勾）

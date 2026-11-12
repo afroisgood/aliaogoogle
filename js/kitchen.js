@@ -91,12 +91,17 @@ export function buildKitchen(g) {
   cyl(g, 0.03, 0.03, 0.16, std(0x4a88b8), ex, cH + 0.14, zN + 0.12, 8);
   OBSTACLES.push([x1, ex + 0.22, zN, zN + cD]);
 
-  // 後門（木門，關著）
+  // 後門（木門，關著）：任務二從這裡把舊尿布墊拿出去丟
   const bdx = ex + 0.22 + 0.5;
-  box(g, 0.8, 2.0, 0.05, doorWood, bdx, 1.08, zN + 0.02);
-  for (const y of [0.55, 1.05, 1.55]) box(g, 0.5, 0.012, 0.055, std(0x8a5a2a), bdx + 0.08, y, zN + 0.02);
-  box(g, 0.9, 0.08, 0.2, std(0xb9b6ae), bdx, 0.04, zN + 0.1);
-  box(g, 0.03, 0.14, 0.03, steel, bdx - 0.32, 1.05, zN + 0.06);
+  const backDoor = new THREE.Group();
+  backDoor.name = 'backDoor';
+  backDoor.userData.interact = 'backdoor';
+  backDoor.position.set(bdx, 0, zN);
+  box(backDoor, 0.8, 2.0, 0.05, doorWood, 0, 1.08, 0.02);
+  for (const y of [0.55, 1.05, 1.55]) box(backDoor, 0.5, 0.012, 0.055, std(0x8a5a2a), 0.08, y, 0.02);
+  box(backDoor, 0.9, 0.08, 0.2, std(0xb9b6ae), 0, 0.04, 0.1);
+  box(backDoor, 0.03, 0.14, 0.03, steel, -0.32, 1.05, 0.06);
+  g.add(backDoor);
 
   // 鐵窗（位置較低）
   const wx = bdx + 0.4 + 0.65;
