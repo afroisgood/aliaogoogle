@@ -262,8 +262,6 @@ function buildNorthWall(g) {
   }
   // 層板上的雜物
   box(shelf, 0.22, 0.05, 0.16, std(0xd9c7a0), -0.75, 1.055, zc);
-  box(shelf, 0.3, 0.1, 0.25, std(0x5a2a2a, { roughness: 1 }), -0.4, 1.08, zc);
-  box(shelf, 0.3, 0.18, 0.12, std(0xeeeae0, { roughness: 1 }), 0.25, 1.12, zc + 0.05);
   cyl(shelf, 0.06, 0.06, 0.12, std(0xf5f5f5), 0.55, 1.09, zc);
   box(shelf, 0.3, 0.04, 0.3, std(0x2f6f6a, { roughness: 1 }), -0.65, 0.37, zc);
   // 掛在上櫃的綠色聖誕樹圍裙

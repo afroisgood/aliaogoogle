@@ -4,7 +4,7 @@ import { ROOM } from './livingroom.js';
 import { openWalk } from './walk.js';
 
 // 任務一：帶狗出門。屋內依序完成三件事，出門後進入散步路線頁。
-// 牽繩與狗狗包的擺放位置目前是暫定的（松木層架），之後要依實際位置調整。
+// 牽繩與狗狗包都放在松木層架中間那層開放層板上：牽繩在左半邊，狗狗包在右半邊。
 export const MISSION = {
   id: 'walk',
   title: '任務一：帶狗出門',
@@ -18,9 +18,9 @@ export const MISSION = {
 
 // 每個要點擊的目標：提示文字，以及完成後推進到哪一個步驟
 const TARGETS = [
-  { id: 'leash', step: 0, hint: '拿牽繩（掛在松木層架右側）' },
+  { id: 'leash', step: 0, hint: '拿牽繩（松木層架中間那層，左半邊）' },
   { id: 'dog', step: 0, hint: '走到巴福柔旁邊，點牠繫上牽繩' },
-  { id: 'bag', step: 1, hint: '拿狗狗包（在松木層架的層板上）' },
+  { id: 'bag', step: 1, hint: '拿狗狗包（松木層架中間那層，右半邊）' },
   { id: 'door', step: 2, hint: '從大門出門（最右邊那片落地門）' },
 ];
 
@@ -32,18 +32,20 @@ export function initMission({ scene, dog, onChange }) {
   const state = { active: false, at: 0, leashed: false, done: !!loadDone()[MISSION.id] };
 
   /* ----- 屋內的任務物件 ----- */
-  const leash = new THREE.Group();                        // 牽繩：掛在層架右側
-  leash.position.set(0.86, 1.32, -HD + 0.3);
+  const leash = new THREE.Group();                        // 牽繩：捲起來放在層架左半邊的層板上
+  leash.position.set(-0.45, 1.03, -HD + 0.33);
   const rope = std(0xd8452c, { roughness: 0.9 });
-  const loop = new THREE.Mesh(new THREE.TorusGeometry(0.08, 0.014, 6, 14), rope);
-  loop.rotation.y = Math.PI / 2;
-  leash.add(loop);
-  box(leash, 0.02, 0.5, 0.03, rope, 0, -0.32, 0.03);
-  box(leash, 0.03, 0.07, 0.04, std(0xb9b2a0, { metalness: 0.8, roughness: 0.3 }), 0, -0.6, 0.03);
+  for (const [r, y] of [[0.1, 0.02], [0.085, 0.045]]) {
+    const coil = new THREE.Mesh(new THREE.TorusGeometry(r, 0.016, 6, 14), rope);
+    coil.rotation.x = Math.PI / 2;
+    coil.position.y = y;
+    leash.add(coil);
+  }
+  box(leash, 0.035, 0.03, 0.08, std(0xb9b2a0, { metalness: 0.8, roughness: 0.3 }), 0.12, 0.02, 0.06);
   leash.userData.interact = 'leash';
 
-  const bag = new THREE.Group();                          // 狗狗包：層架的開放層板上
-  bag.position.set(0.02, 1.03, -HD + 0.33);
+  const bag = new THREE.Group();                          // 狗狗包：層架右半邊的層板上
+  bag.position.set(0.3, 1.03, -HD + 0.33);
   const canvasMat = std(0xd9a321, { roughness: 0.9 });
   box(bag, 0.3, 0.22, 0.14, canvasMat, 0, 0.11, 0);
   box(bag, 0.31, 0.06, 0.15, std(0x8a6414, { roughness: 0.9 }), 0, 0.2, 0);
@@ -56,6 +58,12 @@ export function initMission({ scene, dog, onChange }) {
   door.position.set(1.7, 1.03, HD - 0.08);
   door.userData.interact = 'door';
   dog.userData.interact = 'dog';
+  // 小東西不好點，各加一個看不見、比較大的點擊範圍
+  for (const [o, y] of [[leash, 0.12], [bag, 0.14]]) {
+    const hitbox = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.34, 0.42), door.material);
+    hitbox.position.y = y;
+    o.add(hitbox);
+  }
   scene.add(leash, bag, door);
 
   // 目標上方跳動的黃色菱形
@@ -63,9 +71,10 @@ export function initMission({ scene, dog, onChange }) {
     new THREE.MeshBasicMaterial({ color: 0xffd23c, fog: false }));
   pointer.scale.y = 1.5;
   pointer.visible = false;
+  pointer.raycast = () => {};          // 菱形本身不擋點擊
   scene.add(pointer);
   const objects = { leash, dog, bag, door };
-  const tops = { leash: 0.3, dog: 1.0, bag: 0.5, door: 0.35 };
+  const tops = { leash: 0.28, dog: 1.0, bag: 0.42, door: 0.35 };
 
   const target = () => (state.active ? TARGETS[state.at] : null);
 
