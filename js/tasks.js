@@ -1,59 +1,37 @@
-// 任務資料：之後在這裡補上實際內容。
-// 格式：{ id: '不重複的代號', title: '任務說明' }
-export const mainTasks = [];
+import { MISSION } from './mission.js';
+
+// 任務清單面板。必備任務目前只有任務一；支線任務之後補上。
 export const sideTasks = [];
 
-const STORE_KEY = 'bafurou-tasks-done';
-
-function loadDone() {
-  try { return JSON.parse(localStorage.getItem(STORE_KEY)) || {}; } catch { return {}; }
-}
-
-function renderList(el, tasks, done) {
-  el.innerHTML = '';
-  if (!tasks.length) {
-    const li = document.createElement('li');
-    li.className = 'empty';
-    li.textContent = '尚未設定';
-    el.appendChild(li);
-    return;
-  }
-  for (const t of tasks) {
-    const li = document.createElement('li');
-    const label = document.createElement('label');
-    const box = document.createElement('input');
-    const text = document.createElement('span');
-    box.type = 'checkbox';
-    box.checked = !!done[t.id];
-    text.textContent = t.title;
-    li.classList.toggle('done', box.checked);
-    box.addEventListener('change', () => {
-      done[t.id] = box.checked;
-      li.classList.toggle('done', box.checked);
-      localStorage.setItem(STORE_KEY, JSON.stringify(done));
-      updateCount(done);
-    });
-    label.append(box, text);
-    li.appendChild(label);
-    el.appendChild(li);
-  }
-}
-
-function updateCount(done) {
-  const all = [...mainTasks, ...sideTasks];
-  document.getElementById('task-count').textContent = `${all.filter(t => done[t.id]).length}/${all.length}`;
-}
-
-export function initTasks() {
-  const done = loadDone();
-  updateCount(done);
-  renderList(document.getElementById('main-tasks'), mainTasks, done);
-  renderList(document.getElementById('side-tasks'), sideTasks, done);
-
+export function initTasks(mission) {
+  const main = document.getElementById('main-tasks');
+  const side = document.getElementById('side-tasks');
   const toggle = document.getElementById('tasks-toggle');
   const panel = document.getElementById('tasks-panel');
-  toggle.addEventListener('click', () => {
-    panel.hidden = !panel.hidden;
-    toggle.setAttribute('aria-expanded', String(!panel.hidden));
-  });
+  const goal = document.getElementById('goal');
+
+  const setOpen = open => {
+    panel.hidden = !open;
+    toggle.setAttribute('aria-expanded', String(open));
+  };
+  toggle.addEventListener('click', () => setOpen(panel.hidden));
+
+  function render() {
+    const { state } = mission, done = mission.stepsDone();
+    main.innerHTML = `
+      <li class="mission">
+        <div class="mission-title">${MISSION.title}${state.done && !state.active ? '　✓ 已完成' : ''}</div>
+        <ol>${MISSION.steps.map((s, i) => `<li class="${i < done ? 'done' : state.active && i === done ? 'now' : ''}">${s.text}</li>`).join('')}</ol>
+        <button id="mission-start">${state.active ? '重新開始' : state.done ? '再做一次' : '開始任務'}</button>
+      </li>`;
+    main.querySelector('#mission-start').onclick = () => { mission.start(); setOpen(false); };
+    side.innerHTML = sideTasks.length ? '' : '<li class="empty">尚未設定</li>';
+    document.getElementById('task-count').textContent = `${state.done ? 1 : 0}/1`;
+
+    const hint = mission.hint();
+    goal.hidden = !hint;
+    goal.textContent = hint ? `目標：${hint}` : '';
+  }
+  render();
+  return render;
 }

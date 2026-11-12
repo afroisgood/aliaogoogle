@@ -3,6 +3,7 @@ import { buildLivingRoom, ROOM } from './livingroom.js';
 import { STYLE, OBSTACLES, WALK, ROOMS } from './kit.js';
 import { initTasks } from './tasks.js';
 import { DOG_FACE } from './pixelart.js';
+import { initMission } from './mission.js';
 
 const canvas = document.getElementById('scene');
 // 先算到一張貼圖，再用後製決定風格：低解析度放大、色階、網點、描邊、色調
@@ -75,6 +76,8 @@ const camera = new THREE.PerspectiveCamera(70, 1, 0.04, 60);
 camera.rotation.order = 'YXZ';
 
 const { dog, cat, southDoors } = buildLivingRoom(scene);
+const DOG_HOME = dog.position.toArray();
+const mission = initMission({ scene, dog, onChange: () => mission.onChange && mission.onChange() });
 
 /* ---------- 視角 ---------- */
 
@@ -107,6 +110,7 @@ function setView(name) {
   stopWalk();
   scene.fog = name === 'overview' ? null : fog;
   dog.visible = name !== 'dog';
+  if (mission.state.active && !mission.state.leashed) dog.position.set(...DOG_HOME);
   cat.visible = name !== 'cat';
   if (name === 'overview') {
     camera.fov = 50;
@@ -278,6 +282,11 @@ function walkTo(clientX, clientY) {
     ((clientX - rect.left) / rect.width) * 2 - 1, -((clientY - rect.top) / rect.height) * 2 + 1), camera);
   const hit = raycaster.intersectObjects(scene.children, true).find(h => h.object !== marker && h.object.visible);
   if (!hit) return;
+  // 點到任務目標：夠近就直接完成，不夠近就先走過去
+  let id = null;
+  for (let o = hit.object; o && !id; o = o.parent) id = o.userData.interact;
+  pending = id && mission.wants(id) ? { id, x: hit.point.x, z: hit.point.z } : null;
+  if (pending && tryInteract()) return;
   const pts = findPath(hit.point.x, hit.point.z, VIEWS[mode].radius);
   if (!pts.length) return;
   path = pts;
@@ -287,6 +296,16 @@ function walkTo(clientX, clientY) {
 
 function stopWalk() { path = null; marker.visible = false; }
 
+let pending = null;      // 正要走過去互動的任務目標
+function tryInteract() {
+  if (!pending || Math.hypot(pending.x - fp.x, pending.z - fp.z) > 1.7) return false;
+  const { id } = pending;
+  pending = null;
+  stopWalk();
+  mission.trigger(id);
+  return true;
+}
+
 function followPath(dt) {
   const v = VIEWS[mode];
   let step = v.speed * dt;
@@ -295,7 +314,8 @@ function followPath(dt) {
     if (d <= step) { fp.x = tx; fp.z = tz; step -= d; path.shift(); }
     else { fp.x += (tx - fp.x) / d * step; fp.z += (tz - fp.z) / d * step; step = 0; }
   }
-  if (!path.length) return stopWalk();
+  if (pending && tryInteract()) return;
+  if (!path.length) { stopWalk(); pending = null; return; }
   // 邊走邊把視線轉向前進方向
   const [lx, lz] = path[Math.min(6, path.length - 1)];
   if (Math.hypot(lx - fp.x, lz - fp.z) > 0.35 && !pointers.size) {
@@ -317,6 +337,7 @@ function move(dt) {
   const len = Math.hypot(f, s);
   if (!len) { if (path) followPath(dt); return; }
   stopWalk();          // 手動移動會取消自動行走
+  pending = null;
   if (len > 1) { f /= len; s /= len; }
   const sin = Math.sin(fp.yaw), cos = Math.cos(fp.yaw);
   const dx = (-sin * f + cos * s) * v.speed * dt;
@@ -356,6 +377,14 @@ function frame() {
     southDoors.visible = focus !== 0 || camera.position.z < HD;
   } else {
     move(dt);
+    // 繫上牽繩後，巴福柔會跟在身後
+    if (mission.state.leashed && mode !== 'dog') {
+      const bx = fp.x + Math.sin(fp.yaw) * 0.8, bz = fp.z + Math.cos(fp.yaw) * 0.8;
+      dog.position.x += (bx - dog.position.x) * Math.min(1, dt * 3);
+      dog.position.z += (bz - dog.position.z) * Math.min(1, dt * 3);
+    } else if (!mission.state.leashed) {
+      dog.position.set(...DOG_HOME);
+    }
     southDoors.visible = true;
     camera.position.set(fp.x, VIEWS[mode].eye, fp.z);
     camera.rotation.set(fp.pitch, fp.yaw, 0);
@@ -366,6 +395,7 @@ function frame() {
     const i = stops.findIndex(r => r.name === label);
     if (i >= 0 && i !== focus) { focus = i; orbit.target.set(...stops[i].center); orbit.r = stops[i].r; }
   }
+  mission.update(clock.elapsedTime);
   renderer.setRenderTarget(target);
   renderer.render(scene, camera);
   renderer.setRenderTarget(null);
@@ -377,9 +407,10 @@ const portrait = document.getElementById('portrait');
 portrait.width = DOG_FACE.width; portrait.height = DOG_FACE.height;
 portrait.getContext('2d').drawImage(DOG_FACE, 0, 0);
 
-initTasks();
+const renderTasks = initTasks(mission);
+mission.onChange = renderTasks;
 setView('overview');
 frame();
 
 // 方便除錯與之後擴充
-window.__app = { setView, goRoom, fp, orbit };
+window.__app = { setView, goRoom, fp, orbit, mission };
