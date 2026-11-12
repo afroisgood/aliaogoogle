@@ -10,7 +10,7 @@ const DONE_KEY = 'bafurou-missions-done';
 const loadDone = () => { try { return JSON.parse(localStorage.getItem(DONE_KEY)) || {}; } catch { return {}; } };
 
 export function makeQuest({ scene, def, phases, objects, onStart = () => {}, onStop = () => {}, onTrigger = () => {} }) {
-  const state = { active: false, at: 0, done: !!loadDone()[def.id] };
+  const state = { active: false, at: 0, done: !!loadDone()[def.id], finished: 0 };
   let left = new Set(), onChange = () => {};
 
   const pointers = Array.from({ length: Math.max(...phases.map(p => p.ids.length)) }, () => {
@@ -51,7 +51,7 @@ export function makeQuest({ scene, def, phases, objects, onStart = () => {}, onS
     if (!left.size) {
       if (state.at + 1 < phases.length) enter(state.at + 1);
       else {
-        Object.assign(state, { active: false, done: true });
+        Object.assign(state, { active: false, done: true, finished: state.finished + 1 });
         localStorage.setItem(DONE_KEY, JSON.stringify({ ...loadDone(), [def.id]: true }));
       }
     }
@@ -69,7 +69,7 @@ export function makeQuest({ scene, def, phases, objects, onStart = () => {}, onS
   }
 
   return {
-    def, state, start, stop, trigger, update, wants,
+    def, pointers, state, start, stop, trigger, update, wants,
     hint: () => (state.active && phases[state.at] ? phases[state.at].hint : ''),
     stepTexts: () => def.steps.map(s => s.text),
     stepsDone: () => (state.done && !state.active ? def.steps.length : !state.active ? 0 : phases[state.at].step),

@@ -26,7 +26,7 @@ const TARGETS = [
 const HD = ROOM.D / 2;
 const BOWL = [0.25, HD - 0.5];
 // 巴福柔吃飯時站的位置（頭朝東對著碗）
-const EAT_SPOT = [BOWL[0] - 0.6, BOWL[1]];
+const EAT_SPOT = [BOWL[0] - 0.5, BOWL[1]];
 const EAT_TIME = 4;              // 吃幾秒
 const DOG_SPEED = 1.2;
 
@@ -34,7 +34,7 @@ const DONE_KEY = 'bafurou-missions-done';
 const loadDone = () => { try { return JSON.parse(localStorage.getItem(DONE_KEY)) || {}; } catch { return {}; } };
 
 export function initFeed({ scene, dog }) {
-  const state = { active: false, at: 0, done: !!loadDone()[FEED.id] };
+  const state = { active: false, at: 0, done: !!loadDone()[FEED.id], finished: 0 };
   const invisible = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false });
 
   /* ----- 狗碗：飼料與凍乾分開，裝了才看得到 ----- */
@@ -71,6 +71,7 @@ export function initFeed({ scene, dog }) {
   jar.add(jarHit);
   jar.userData.interact = 'freeze';
   scene.add(bowl, bag, jar);
+  OBSTACLES.push([BOWL[0] - 0.12, BOWL[0] + 0.12, BOWL[1] - 0.12, BOWL[1] + 0.12]);
 
   const objects = { bowl, kibble: bag, freeze: jar };
 
@@ -93,7 +94,7 @@ export function initFeed({ scene, dog }) {
   // { path, eat, retry }：path 是還沒走完的路線點，eat 是已經吃了幾秒
   let walk = null;
   const owns = () => !!walk;
-  const DOG_R = 0.2;
+  const DOG_R = 0.22;
   const atBowl = () => Math.hypot(dog.position.x - EAT_SPOT[0], dog.position.z - EAT_SPOT[1]) < 0.15;
   const blocked = () => !!walk && !walk.path.length && !atBowl() && walk.eat === 0;
   const plan = () => findPath(dog.position.x, dog.position.z, EAT_SPOT[0], EAT_SPOT[1], DOG_R);
@@ -128,7 +129,7 @@ export function initFeed({ scene, dog }) {
   }
 
   function finish() {
-    Object.assign(state, { active: false, done: true });
+    Object.assign(state, { active: false, done: true, finished: state.finished + 1 });
     localStorage.setItem(DONE_KEY, JSON.stringify({ ...loadDone(), [FEED.id]: true }));
     onChange();
   }
@@ -203,7 +204,7 @@ export function initFeed({ scene, dog }) {
 
   let onChange = () => {};
   return {
-    def: FEED, state, start, stop, trigger, update, owns,
+    def: FEED, pointers: [pointer], state, start, stop, trigger, update, owns,
     wants: id => !!target() && target().id === id,
     hint: () => (target() ? target().hint
       : !state.active ? ''

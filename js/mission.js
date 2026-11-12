@@ -29,7 +29,7 @@ const loadDone = () => { try { return JSON.parse(localStorage.getItem(DONE_KEY))
 
 export function initMission({ scene, dog, onChange }) {
   const HD = ROOM.D / 2;
-  const state = { active: false, at: 0, leashed: false, done: !!loadDone()[MISSION.id] };
+  const state = { active: false, at: 0, leashed: false, done: !!loadDone()[MISSION.id], finished: 0 };
 
   /* ----- 屋內的任務物件 ----- */
   const leash = new THREE.Group();                        // 牽繩：捲起來放在層架左半邊的層板上
@@ -92,7 +92,7 @@ export function initMission({ scene, dog, onChange }) {
   }
 
   function finish() {
-    Object.assign(state, { active: false, leashed: false, done: true });
+    Object.assign(state, { active: false, leashed: false, done: true, finished: state.finished + 1 });
     leash.visible = bag.visible = true;
     localStorage.setItem(DONE_KEY, JSON.stringify({ ...loadDone(), [MISSION.id]: true }));
     onChange();
@@ -120,7 +120,7 @@ export function initMission({ scene, dog, onChange }) {
   }
 
   return {
-    def: MISSION, state, start, stop, trigger, update,
+    def: MISSION, pointers: [pointer], state, start, stop, trigger, update,
     stepTexts: () => MISSION.steps.map(s => s.text),
     wants: id => !!target() && target().id === id,
     hint: () => (target() ? target().hint : ''),

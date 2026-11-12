@@ -32,7 +32,7 @@ const DONE_KEY = 'bafurou-missions-done';
 const loadDone = () => { try { return JSON.parse(localStorage.getItem(DONE_KEY)) || {}; } catch { return {}; } };
 
 export function initClean({ scene }) {
-  const state = { active: false, at: 0, done: !!loadDone()[CLEAN.id] };
+  const state = { active: false, at: 0, done: !!loadDone()[CLEAN.id], finished: 0 };
   const invisible = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false });
   const objects = {};
 
@@ -161,7 +161,7 @@ export function initClean({ scene }) {
   }
 
   function finish() {
-    Object.assign(state, { active: false, done: true });
+    Object.assign(state, { active: false, done: true, finished: state.finished + 1 });
     idle();
     localStorage.setItem(DONE_KEY, JSON.stringify({ ...loadDone(), [CLEAN.id]: true }));
   }
@@ -200,7 +200,7 @@ export function initClean({ scene }) {
 
   let onChange = () => {};
   const api = {
-    def: CLEAN, state, start, stop, trigger, update, wants,
+    def: CLEAN, pointers, state, start, stop, trigger, update, wants,
     hint: () => (state.active && phases[state.at] ? phases[state.at].hint() : ''),
     // 清單上每個步驟的文字（今天沒有便便時註明跳過）
     stepTexts: () => CLEAN.steps.map((s, i) =>

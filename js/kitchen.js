@@ -181,6 +181,7 @@ export function buildKitchen(g) {
   /* ----- 南牆：貓砂盆 ----- */
   const clear = new THREE.MeshStandardMaterial({ color: 0xe4eaee, transparent: true, opacity: 0.6, roughness: 0.3 });
   box(g, 0.3, 0.26, 0.38, clear, x1 + td + 0.28, 0.13, zS - 0.25);                        // 透明收納盒
+  OBSTACLES.push([x1 + td + 0.13, x1 + td + 0.43, zS - 0.44, zS]);
   const lx = CAT_SPOTS.litter[0];
   box(g, 0.62, 0.3, 0.44, std(0x93b25a, { roughness: 0.7 }), lx, 0.15, zS - 0.26);        // 綠色貓砂盆
   box(g, 0.54, 0.02, 0.36, std(0xcfc8b8, { roughness: 1 }), lx, 0.3, zS - 0.26);          // 貓砂
@@ -192,12 +193,14 @@ export function buildKitchen(g) {
   for (const [, z] of CAT_SPOTS.bowls) {
     cyl(g, 0.17, 0.17, 0.015, std(0x6a5fb0, { roughness: 0.8 }), x2 - 0.45, 0.008, z);    // 紫色碗墊
     cyl(g, 0.1, 0.08, 0.05, steel, x2 - 0.45, 0.04, z);                                   // 不鏽鋼碗
+    OBSTACLES.push([x2 - 0.62, x2 - 0.28, z - 0.17, z + 0.17]);
   }
   const [bx, bz] = CAT_SPOTS.foodBin;
   cyl(g, 0.13, 0.11, 0.3, std(0xefe6c8), bx, 0.15, bz);                                   // 貓飼料桶
   cyl(g, 0.135, 0.135, 0.04, std(0xe09a3a), bx, 0.32, bz);
   const bag = box(g, 0.3, 0.1, 0.4, std(0x3f8a52, { roughness: 0.9 }), x2 - 0.25, 0.05, zS - 0.95); // 飼料袋
   bag.rotation.y = 0.3;
+  OBSTACLES.push([bx - 0.14, x2, bz - 0.14, bz + 0.14], [x2 - 0.45, x2, zS - 1.2, zS - 0.7]);
   box(g, 0.012, 0.07, 0.11, white, x2 - 0.008, 1.15, zN + 1.0);                           // 插座
   box(g, 0.012, 0.11, 0.07, white, x2 - 0.008, 1.2, zS - 0.25);                           // 開關
 

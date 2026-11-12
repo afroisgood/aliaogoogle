@@ -39,6 +39,8 @@ export function buildDog() {
     box(d, 0.08, 0.04, 0.11, shade, s * 0.075, 0.02, 0.24);
   }
   box(d, 0.05, 0.3, 0.05, fur, 0, 0.72, 0.36).rotation.x = -0.55;                  // 翹起的尾巴
+  // 把整隻狗往後挪，讓位置點落在身體正中間（頭到尾巴前後各約 0.55m），碰撞才算得準
+  for (const c of d.children) c.position.z += 0.15;
   return movable(d, 0.34, 0.8);
 }
 

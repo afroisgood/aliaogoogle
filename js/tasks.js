@@ -1,6 +1,6 @@
 // 任務清單面板：必備任務與支線任務。同時只做一個任務。
 // 每個任務物件提供 def、state、start、stop、hint、stepTexts、stepsDone。
-export function initTasks(missions, sides) {
+export function initTasks(missions, sides, startQuest) {
   const main = document.getElementById('main-tasks');
   const side = document.getElementById('side-tasks');
   const toggle = document.getElementById('tasks-toggle');
@@ -28,9 +28,7 @@ export function initTasks(missions, sides) {
     main.innerHTML = missions.map(item).join('');
     side.innerHTML = sides.length ? sides.map(item).join('') : '<li class="empty">尚未設定</li>';
     panel.querySelectorAll('[data-start]').forEach(b => b.onclick = () => {
-      const m = all[+b.dataset.start];
-      for (const o of all) if (o !== m) o.stop();
-      m.start();
+      startQuest(all[+b.dataset.start]);
       setOpen(false);
     });
     // 狀態列的數字只算必備任務

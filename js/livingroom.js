@@ -182,6 +182,7 @@ function buildWestWall(g) {
     new THREE.MeshStandardMaterial({ color: 0xcfe6b8, transparent: true, opacity: 0.55 }));
   disc.position.set(0.06, 0.82, 0); disc.rotation.z = Math.PI / 2; fan.add(disc);
   g.add(fan);
+  OBSTACLES.push([x + 0.1, x + 0.5, 0.8, 1.2]);
 
   // 兩個粉紅蓋垃圾桶
   for (const dz of [0, 0.3]) {
@@ -189,9 +190,12 @@ function buildWestWall(g) {
     box(g, 0.25, 0.05, 0.27, std(0xec7f8f), x + 0.6 + dz * 0.2, 0.325, 1.38 + dz);
   }
 
+  OBSTACLES.push([x + 0.47, x + 0.79, 1.25, 1.83]);     // 垃圾桶
+
   // 靠在門邊的白色板子
   const board = box(g, 0.7, 0.75, 0.02, white, -1.2, 0.37, HD - 0.2);
   board.rotation.x = 0.16;
+  OBSTACLES.push([-1.55, -0.85, HD - 0.3, HD]);
 }
 
 // 北牆：書桌、椅子、松木層架
@@ -344,6 +348,7 @@ function buildEastAndEntry(g) {
   cyl(vac, 0.05, 0.05, 0.07, std(0x2f9aa0, { roughness: 0.35 }), -0.03, 1.16, 0);
   box(vac, 0.05, 0.16, 0.05, dk, -0.1, 1.05, 0);
   g.add(vac);
+  OBSTACLES.push([x - 0.31, x - 0.05, 1.32, 1.58]);
 
   // 腳踏墊與拖鞋
   box(g, 0.75, 0.012, 0.45, std(0x2a2f45, { roughness: 1 }), 1.7, 0.006, HD - 0.4);
@@ -356,6 +361,7 @@ function buildEastAndEntry(g) {
   const bin = box(g, 0.28, 0.2, 0.36, new THREE.MeshStandardMaterial({ color: 0xd9e3ea, transparent: true, opacity: 0.6, roughness: 0.3 }), 1.34, 0.1, HD - 0.25);
   bin.castShadow = false;
   box(g, 0.29, 0.02, 0.37, std(0x8c98a6), 1.34, 0.21, HD - 0.25);
+  OBSTACLES.push([1.2, 1.48, HD - 0.43, HD]);
 
   // 地上的玩具與啞鈴
   ball(g, 0.055, std(0xe5c020, { roughness: 0.7 }), -0.25, 0.05, -0.75, 1.6, 0.9, 1);
@@ -368,6 +374,7 @@ function buildEastAndEntry(g) {
     cyl(d, 0.05, 0.05, 0.05, iron, 0.09, 0, 0, 6).rotation.z = Math.PI / 2;
     g.add(d);
   }
+  OBSTACLES.push([-0.17, 0.07, -1.1, -0.84]);
 }
 
 /* ---------- 組裝 ---------- */
@@ -384,7 +391,7 @@ export function buildLivingRoom(scene) {
 
   // 巴福柔一開始站在沙發後方通往走廊的走道，之後會在屋裡到處走
   const dog = buildDog();
-  dog.position.set(1.72, 0, -0.55);
+  dog.position.set(1.76, 0, -0.55);
   dog.rotation.y = Math.PI * 0.85;      // 面向大門
   g.add(dog);
 

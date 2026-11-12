@@ -15,6 +15,7 @@
   <header id="topbar">
     <h1>阿廖顧狗</h1>
     <button id="room-name" title="切換房間">客廳 ▸</button>
+    <button id="day-btn" title="今天的進度">今天 0/5 ▸</button>
     <button id="tasks-toggle" aria-expanded="false">任務清單</button>
   </header>
 
@@ -30,6 +31,7 @@
   </aside>
 
   <div id="goal" hidden></div>
+  <div id="compass" hidden><div id="compass-arrow">▲</div><span id="compass-text"></span></div>
   <div id="alert" role="alert" hidden>⚠ 廚房柵欄沒關！回去把柵欄關上</div>
 
   <div id="hint"></div>
@@ -48,6 +50,8 @@
   </footer>
 
   <section id="walk" hidden></section>
+  <div id="coach" hidden></div>
+  <div id="card" hidden></div>
 
   <script type="module" src="js/main.js"></script>
 </body>
