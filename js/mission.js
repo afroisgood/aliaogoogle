@@ -64,7 +64,7 @@ export function initMission({ scene, dog, onChange }) {
     hitbox.position.y = y;
     o.add(hitbox);
   }
-  scene.add(leash, bag, door);
+  scene.getObjectByName('world').add(leash, bag, door);     // 跟著屋子一起放大
 
   // 目標上方跳動的黃色菱形
   const pointer = new THREE.Mesh(new THREE.OctahedronGeometry(0.11),
@@ -115,7 +115,8 @@ export function initMission({ scene, dog, onChange }) {
     pointer.visible = !!t;
     if (!t) return;
     const o = objects[t.id];
-    pointer.position.set(o.position.x, o.position.y + tops[t.id] + Math.sin(time * 4) * 0.05, o.position.z);
+    o.getWorldPosition(pointer.position);
+    pointer.position.y += tops[t.id] + Math.sin(time * 4) * 0.05;
     pointer.rotation.y = time * 2;
   }
 

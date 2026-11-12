@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { buildLivingRoom, ROOM } from './livingroom.js';
 import { animatePet } from './pets.js';
-import { STYLE, ROOMS } from './kit.js';
+import { STYLE, ROOMS, SPACE } from './kit.js';
 import { walkable, findPath } from './nav.js';
 import { initTasks } from './tasks.js';
 import { DOG_FACE } from './pixelart.js';
@@ -80,7 +80,7 @@ postScene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), post));
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x000000);
-const fog = STYLE.fog ? new THREE.Fog(0x000000, ...STYLE.fog) : null;   // 遠處變暗
+const fog = STYLE.fog ? new THREE.Fog(0x000000, ...STYLE.fog.map(d => d * SPACE)) : null;   // 遠處變暗
 const camera = new THREE.PerspectiveCamera(70, 1, 0.04, 60);
 camera.rotation.order = 'YXZ';
 
@@ -114,28 +114,28 @@ const clickables = [...missions, ...sides, gate];
 // 巴福柔和兩隻貓在屋裡到處走。巴福柔被牽著、自己去吃飯、或等著被繫牽繩的時候不亂走；
 // 用牠們的視角時，那隻本身也不動
 const wander = initWander([
-  { obj: dog, r: 0.25, front: 0.55, speed: 0.8, rest: [3, 9],
+  { obj: dog, r: 0.25, front: 0.55, speed: 1.0, rest: [3, 9],
     free: () => mode !== 'dog' && !mission.state.leashed && !feed.owns() && !mission.wants('dog') && !play.busy() },
-  { obj: cat, r: 0.12, front: 0.28, speed: 0.6, rest: [4, 14], free: () => mode !== 'cat' },
-  { obj: kitten, r: 0.1, front: 0.22, speed: 0.75, rest: [2, 8], free: () => true },
+  { obj: cat, r: 0.12, front: 0.28, speed: 0.75, rest: [4, 14], free: () => mode !== 'cat' },
+  { obj: kitten, r: 0.1, front: 0.22, speed: 0.9, rest: [2, 8], free: () => true },
 ], () => (mode === 'overview' ? null : { x: fp.x, z: fp.z, r: VIEWS[mode].radius + 0.1 }));
 
 /* ---------- 視角 ---------- */
 
-const HD = ROOM.D / 2, HW = ROOM.W / 2;
+const HD = ROOM.D / 2 * SPACE;         // 客廳南牆（大門）實際的 z
 // yaw = 0 朝北（屋內深處），正值往西轉
 const VIEWS = {
   overview: { hint: '拖曳旋轉・滾輪或雙指縮放' },
-  human: { eye: 1.6, speed: 1.8, radius: 0.18, start: [1.7, 1.5], yaw: 0.72, pitch: -0.12, fov: 75,
+  human: { eye: 1.6, speed: 2.2, radius: 0.18, start: [1.7, 1.5], yaw: 0.72, pitch: -0.12, fov: 75,
     hint: '人的視角（從大門進來）・點一下地板走過去・拖曳環顧' },
-  dog: { eye: 0.62, speed: 2.4, radius: 0.2, start: [1.72, -0.55], yaw: Math.PI * 0.8, pitch: 0.12, fov: 80,
+  dog: { eye: 0.62, speed: 3.0, radius: 0.2, start: [1.72, -0.55], yaw: Math.PI * 0.8, pitch: 0.12, fov: 80,
     hint: '巴福柔的視角・點一下地板走過去・拖曳環顧' },
-  cat: { eye: 0.24, speed: 1.6, radius: 0.12, start: [0.1, 1.2], yaw: 0.4, pitch: 0.25, fov: 80,
+  cat: { eye: 0.24, speed: 2.0, radius: 0.12, start: [0.1, 1.2], yaw: 0.4, pitch: 0.25, fov: 80,
     hint: '貓的視角・點一下地板走過去・拖曳環顧' },
 };
 
 let mode = 'overview';
-const orbit = { theta: 0.55, phi: 0.85, r: 7.5, target: new THREE.Vector3(0, 0.9, 0) };
+const orbit = { theta: 0.55, phi: 0.85, r: 7.5 * SPACE, target: new THREE.Vector3(0, 0.9, 0) };
 const fp = { x: 0, z: 0, yaw: 0, pitch: 0 };
 
 // 和巴福柔互動（握手、趴下、踹人、被人騎、點穴）：沒被牽著、沒在吃飯、任務沒有要用到牠的時候才行
@@ -162,7 +162,7 @@ function setView(name) {
     camera.fov = 50;
   } else {
     // 客廳用各視角自己的起點；其他房間從該房間的門口開始
-    if (focus === 0) { [fp.x, fp.z] = v.start; fp.yaw = v.yaw; fp.pitch = v.pitch; }
+    if (focus === 0) { [fp.x, fp.z] = v.start.map(n => n * SPACE); fp.yaw = v.yaw; fp.pitch = v.pitch; }
     else { [fp.x, fp.z, fp.yaw] = stops[focus].spot; fp.pitch = 0; }
     camera.fov = v.fov;
   }
@@ -239,7 +239,7 @@ canvas.addEventListener('pointerup', e => {
 canvas.addEventListener('pointercancel', release);
 
 function zoom(factor) {
-  orbit.r = THREE.MathUtils.clamp(orbit.r * factor, 3, 22);
+  orbit.r = THREE.MathUtils.clamp(orbit.r * factor, 3, 22 * SPACE);
 }
 canvas.addEventListener('wheel', e => {
   e.preventDefault();
@@ -317,7 +317,7 @@ function stopWalk() { path = null; marker.visible = false; }
 
 let pending = null;      // 正要走過去互動的任務目標
 function tryInteract() {
-  if (!pending || Math.hypot(pending.x - fp.x, pending.z - fp.z) > 1.7) return false;
+  if (!pending || Math.hypot(pending.x - fp.x, pending.z - fp.z) > 1.9) return false;
   const { m, id } = pending;
   pending = null;
   stopWalk();
@@ -426,11 +426,11 @@ let guide = null, guideAt = -1;     // guide：路線上前方約 1.2m 的點；
 function updateCompass(time) {
   const active = [...missions, ...sides].find(m => m.state.active);
   const pts = active && mode !== 'overview' ? active.pointers.filter(p => p.visible) : [];
-  if (!pts.length) { compass.hidden = true; guide = null; return; }
+  if (!pts.length) { compass.hidden = true; guide = null; guideAt = -1; return; }
   const t = pts.reduce((a, b) => (Math.hypot(a.position.x - fp.x, a.position.z - fp.z) <= Math.hypot(b.position.x - fp.x, b.position.z - fp.z) ? a : b)).position;
   const dist = Math.hypot(t.x - fp.x, t.z - fp.z);
   const there = roomAt(t.x, t.z), here = currentRoomName();
-  if (time - guideAt > 0.4) {
+  if (!guide || time - guideAt > 0.4) {
     guideAt = time;
     const route = findPath(fp.x, fp.z, t.x, t.z, VIEWS[mode].radius);
     let left = 1.2, px = fp.x, pz = fp.z;
@@ -530,4 +530,4 @@ setView('overview');
 frame();
 
 // 方便除錯與之後擴充
-window.__app = { setView, goRoom, fp, orbit, mission, clean, feed, litter, catFeed, gate, play, dog, cat, kitten };
+window.__app = { setView, goRoom, fp, orbit, camera, mission, clean, feed, litter, catFeed, gate, play, dog, cat, kitten };

@@ -26,8 +26,20 @@ export const WARM = WARMS[new URLSearchParams(location.search).get('warm')] || W
 
 export const STYLE = { name: STYLES[styleName] ? styleName : 'pixel', ...(STYLES[styleName] || STYLES.pixel) };
 
+// 整個屋子的平面放大倍率：房間、走道、門洞、家具的位置和佔地都照這個比例放大，
+// 高度不變，人和寵物的大小也不變，所以每個空隙都變寬、比較不會到處撞到東西。
+// 各房間的程式照原本估計的尺寸（「配置座標」）寫，由 world 群組統一放大（livingroom.js）；
+// 走路用的範圍資料放進下面三個清單時會自動換算成放大後的實際座標。
+export const SPACE = 1.25;
+function scaledList(scale) {
+  const list = [];
+  list.push = (...items) => { items.forEach(scale); return Array.prototype.push.apply(list, items); };
+  return list;
+}
+const scaleRect = r => { for (let i = 0; i < 4; i++) r[i] *= SPACE; };
+
 // 第一人稱視角的碰撞方塊 [x1, x2, z1, z2]
-export const OBSTACLES = [];
+export const OBSTACLES = scaledList(scaleRect);
 
 /* ---------- 貼圖 ---------- */
 
@@ -193,12 +205,17 @@ export function slab(parent, mat, x1, x2, z1, z2, y, up = true) {
 }
 
 // 可行走範圍 [x1, x2, z1, z2]；房間與門洞各一塊，門洞要往兩側各多伸出一些
-export const WALK = [];
-// 房間名稱與範圍，用來顯示目前所在位置
-export const ROOMS = [];
+export const WALK = scaledList(scaleRect);
+// 房間名稱與範圍，用來顯示目前所在位置；spot 是進房間時站的位置，center、r 是俯瞰時對準的點與距離
+export const ROOMS = scaledList(room => {
+  scaleRect(room.rect);
+  if (room.spot) { room.spot[0] *= SPACE; room.spot[1] *= SPACE; }
+  if (room.center) { room.center[0] *= SPACE; room.center[2] *= SPACE; room.r *= SPACE; }
+});
 
 // 吸頂燈的光：往下照的聚光燈，reach 是照得到的距離（公尺）
 export function ceilingLight(parent, x, y, z, reach = 8, mapSize = 1024, power = 1) {
+  reach *= SPACE;                 // 房間放大了，燈照得到的距離也要跟著放大
   const spot = new THREE.SpotLight(WARM.light, STYLE.spot * power, reach, 1.3, 0.6, 0);
   spot.position.set(x, y, z);
   spot.target.position.set(x, 0, z);

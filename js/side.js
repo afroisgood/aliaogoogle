@@ -6,17 +6,18 @@ import { makeQuest } from './quest.js';
 
 // 支線任務：清理貓砂、餵貓。
 const invisible = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false });
-function hitbox(scene, w, h, d, x, y, z, id) {
+function hitbox(parent, w, h, d, x, y, z, id) {
   const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), invisible);
   m.position.set(x, y, z);
   m.userData.interact = id;
-  scene.add(m);
+  parent.add(m);
   return m;
 }
 
 /* ---------- 支線任務一：清理貓砂 ---------- */
 // 藍色塑膠袋在松木層架左邊上面那個抽屜；貓砂盆在廚房南牆；挖完從廚房後門拿出去丟。
 export function initLitter({ scene }) {
+  const world = scene.getObjectByName('world');      // 任務物件放進屋子的群組，跟著一起放大
   // 抽屜（livingroom.js 松木層架左單元上層抽屜的正面）：點了會拉出來一下，看得到裡面的藍色袋子
   const HD = ROOM.D / 2, front = -HD + 0.53, cx = -0.52;
   const drawer = new THREE.Group();
@@ -25,8 +26,8 @@ export function initLitter({ scene }) {
   box(drawer, 0.76, 0.12, 0.3, std(0xcfa569, { roughness: 0.65 }), 0, -0.01, -0.15);       // 抽屜盒
   const bag = box(drawer, 0.3, 0.05, 0.2, std(0x2f6fd0, { roughness: 0.6 }), -0.1, 0.03, -0.12); // 藍色塑膠袋
   box(drawer, 0.12, 0.012, 0.02, std(0x8a5a2a), 0, 0, 0.02);                                     // 把手
-  scene.add(drawer);
-  const drawerHit = hitbox(scene, 0.82, 0.22, 0.12, cx, 0.84, front + 0.03, 'drawer');
+  world.add(drawer);
+  const drawerHit = hitbox(world, 0.82, 0.22, 0.12, cx, 0.84, front + 0.03, 'drawer');
   let drawerOpen = 0;          // 拉出來還要停留幾秒
 
   // 貓砂盆裡的貓砂塊，開始任務時出現
@@ -37,8 +38,8 @@ export function initLitter({ scene }) {
   }
   clumps.position.set(lx, 0.315, lz);
   clumps.visible = false;
-  scene.add(clumps);
-  const litterHit = hitbox(scene, 0.7, 0.45, 0.5, lx, 0.22, lz, 'litter');
+  world.add(clumps);
+  const litterHit = hitbox(world, 0.7, 0.45, 0.5, lx, 0.22, lz, 'litter');
 
   const quest = makeQuest({
     scene,
@@ -82,13 +83,14 @@ export function initLitter({ scene }) {
 /* ---------- 支線任務二：餵貓 ---------- */
 // 貓飼料桶在廚房東牆靠門口；倒進東牆兩個紫色碗墊上的不鏽鋼碗。
 export function initCatFeed({ scene }) {
+  const world = scene.getObjectByName('world');      // 任務物件放進屋子的群組，跟著一起放大
   const [fx, fz] = CAT_SPOTS.foodBin;
-  const binHit = hitbox(scene, 0.4, 0.45, 0.4, fx, 0.2, fz, 'catfood');
+  const binHit = hitbox(world, 0.4, 0.45, 0.4, fx, 0.2, fz, 'catfood');
   const objects = { catfood: binHit };
   const food = CAT_SPOTS.bowls.map(([x, z], i) => {
-    const f = cyl(scene, 0.07, 0.07, 0.02, std(0xa0662e, { roughness: 1 }), x, 0.06, z, 10);
+    const f = cyl(world, 0.07, 0.07, 0.02, std(0xa0662e, { roughness: 1 }), x, 0.06, z, 10);
     f.visible = false;
-    objects[`catbowl${i}`] = hitbox(scene, 0.38, 0.25, 0.38, x, 0.1, z, `catbowl${i}`);
+    objects[`catbowl${i}`] = hitbox(world, 0.38, 0.25, 0.38, x, 0.1, z, `catbowl${i}`);
     return f;
   });
 

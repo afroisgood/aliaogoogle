@@ -35,6 +35,7 @@ export function initClean({ scene }) {
   const state = { active: false, at: 0, done: !!loadDone()[CLEAN.id], finished: 0 };
   const invisible = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false });
   const objects = {};
+  const world = scene.getObjectByName('world');      // 任務物件放進屋子的群組，跟著一起放大
 
   /* ----- 尿布墊：髒的（有黃色污漬）、乾淨的，以及鋪新墊時的半透明位置提示 ----- */
   const padMat = std(0xf4f4f2, { roughness: 1 });
@@ -51,7 +52,7 @@ export function initClean({ scene }) {
     ball(stain, w * 0.16, stainMat, -w * 0.18, 0.02, -l * 0.2, 1, 0.02, 1).castShadow = false;
     pad.add(stain);
     pad.userData = { interact: `pad${i}`, stain };
-    scene.add(pad);
+    world.add(pad);
     objects[`pad${i}`] = pad;
 
     const ghost = new THREE.Mesh(new THREE.BoxGeometry(w, 0.02, l), ghostMat);
@@ -59,7 +60,7 @@ export function initClean({ scene }) {
     ghost.rotation.y = r;
     ghost.userData.interact = `spot${i}`;
     ghost.visible = false;
-    scene.add(ghost);
+    world.add(ghost);
     objects[`spot${i}`] = ghost;
     return { pad, stain, ghost };
   });
@@ -77,7 +78,7 @@ export function initClean({ scene }) {
     p.add(hitbox);
     p.userData.interact = `poop${i}`;
     p.visible = false;
-    scene.add(p);
+    world.add(p);
     objects[`poop${i}`] = p;
     return p;
   });

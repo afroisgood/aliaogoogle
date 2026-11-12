@@ -9,10 +9,10 @@ export function initGate({ scene, onChange }) {
   // 柵欄的兩個位置：打開時貼著門洞西側往廚房裡收；關上時橫擋整個門洞
   const OPEN = { x: door.x1 - 0.04, z: zS - 0.12, rot: 0 };
   const SHUT = { x: door.x1 + 0.03, z: zS - 0.05, rot: -Math.PI / 2 };
-  const block = [door.x1, door.x2, zS - 0.1, zS + 0.02];
   const far = [99, 99, 99, 99];
-  const obstacle = [...block];          // 放進共用碰撞清單；打開時移到很遠的地方
+  const obstacle = [door.x1, door.x2, zS - 0.1, zS + 0.02];   // 放進共用碰撞清單（會換算成放大後的座標）
   OBSTACLES.push(obstacle);
+  const block = [...obstacle];          // 關上時的範圍；打開時把 obstacle 移到很遠的地方
 
   const state = { open: false, warning: false };
   let t = 0;                            // 動畫進度：0 關、1 開

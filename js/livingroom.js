@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { buildDog, buildCat } from './pets.js';
-import { STYLE, WARM, OBSTACLES, WALK, ROOMS, ceilingLight, std, box, wall, wallRun, slab, cyl, ball, sprite, tileTexture, woodTexture, wallTexture } from './kit.js';
+import { SPACE, STYLE, WARM, OBSTACLES, WALK, ROOMS, ceilingLight, std, box, wall, wallRun, slab, cyl, ball, sprite, tileTexture, woodTexture, wallTexture } from './kit.js';
 import { buildDogRoom, DOGROOM } from './dogroom.js';
 import { buildKitchen, KITCHEN } from './kitchen.js';
 
@@ -126,7 +126,7 @@ function buildCorridor(g, wallMat, tiles) {
   // 走廊盡頭：通往廚房的門洞
   const kd = KITCHEN.door;
   wallRun(g, wallMat, 'x', zEnd + 0.001, x1, x2, hc, 0, [[kd.x1, kd.x2, kd.h]]);
-  const l1 = new THREE.PointLight(0xffe2b0, 0.9, 7, 0);
+  const l1 = new THREE.PointLight(0xffe2b0, 0.9, 7 * SPACE, 0);
   l1.position.set(cx, 2.2, -HD - 4.5);
   g.add(l1);
 
@@ -389,22 +389,26 @@ export function buildLivingRoom(scene) {
   buildDogRoom(g);
   buildKitchen(g);
 
+  // 屋子的平面統一放大（高度不變）。寵物不放進這個群組，大小才不會跟著被拉寬
+  g.name = 'world';
+  g.scale.set(SPACE, 1, SPACE);
+
   // 巴福柔一開始站在沙發後方通往走廊的走道，之後會在屋裡到處走
   const dog = buildDog();
-  dog.position.set(1.76, 0, -0.55);
+  dog.position.set(1.76 * SPACE, 0, -0.55 * SPACE);
   dog.rotation.y = Math.PI * 0.85;      // 面向大門
-  g.add(dog);
+  scene.add(dog);
 
   // 兩隻貓：大的在客廳地上，小的（比較小一號）在走廊，之後也會到處走
   const cat = buildCat();
-  cat.position.set(-0.4, 0, 1.0);
+  cat.position.set(-0.4 * SPACE, 0, 1.0 * SPACE);
   cat.rotation.y = Math.PI * 0.4;
-  g.add(cat);
+  scene.add(cat);
   const kitten = buildCat();
   kitten.scale.setScalar(0.75);
-  kitten.position.set(1.6, 0, -4.2);
+  kitten.position.set(1.6 * SPACE, 0, -4.2 * SPACE);
   kitten.rotation.y = -Math.PI * 0.3;
-  g.add(kitten);
+  scene.add(kitten);
 
   // 燈光：吸頂燈
   g.add(new THREE.HemisphereLight(WARM.sky, WARM.ground, STYLE.ambient * WARM.boost));

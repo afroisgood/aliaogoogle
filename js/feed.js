@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { std, box, cyl, OBSTACLES } from './kit.js';
+import { std, box, cyl, OBSTACLES, SPACE } from './kit.js';
 import { ROOM } from './livingroom.js';
 import { findPath } from './nav.js';
 
@@ -25,8 +25,9 @@ const TARGETS = [
 
 const HD = ROOM.D / 2;
 const BOWL = [0.25, HD - 0.5];
-// 巴福柔吃飯時站的位置（頭朝東對著碗）
-const EAT_SPOT = [BOWL[0] - 0.5, BOWL[1]];
+// 碗放大後實際的位置，以及巴福柔吃飯時站的位置（頭朝東對著碗）
+const BOWL_AT = [BOWL[0] * SPACE, BOWL[1] * SPACE];
+const EAT_SPOT = [BOWL_AT[0] - 0.55, BOWL_AT[1]];
 const EAT_TIME = 4;              // 吃幾秒
 const DOG_SPEED = 1.2;
 
@@ -70,7 +71,7 @@ export function initFeed({ scene, dog }) {
   jarHit.position.y = 0.1;
   jar.add(jarHit);
   jar.userData.interact = 'freeze';
-  scene.add(bowl, bag, jar);
+  scene.getObjectByName('world').add(bowl, bag, jar);      // 跟著屋子一起放大
   OBSTACLES.push([BOWL[0] - 0.12, BOWL[0] + 0.12, BOWL[1] - 0.12, BOWL[1] + 0.12]);
 
   const objects = { bowl, kibble: bag, freeze: jar };
@@ -186,7 +187,7 @@ export function initFeed({ scene, dog }) {
       return;
     }
     // 到碗前面：頭朝碗低下去吃，飼料慢慢變少
-    const want = Math.atan2(-(BOWL[0] - p.x), -(BOWL[1] - p.z));
+    const want = Math.atan2(-(BOWL_AT[0] - p.x), -(BOWL_AT[1] - p.z));
     dog.rotation.y += Math.atan2(Math.sin(want - dog.rotation.y), Math.cos(want - dog.rotation.y)) * Math.min(1, dt * 6);
     dog.userData.eating = true;             // 低頭吃的動作在 pets.js
     walk.eat += dt;
