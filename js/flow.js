@@ -64,7 +64,7 @@ export function initFlow({ quests, startQuest, setView, fp }) {
 
   /* ----- 第一次進站：歡迎與教學 ----- */
   const TUTORIAL = [
-    { text: '點一下地板，走過去看看', done: s => Math.hypot(fp.x - s.x, fp.z - s.z) > 0.8 },
+    { text: '點一下地板，走過去看看', done: s => Math.hypot(fp.x - s.x, fp.z - s.z) > 0.6 },
     { text: '按住畫面左右拖曳，環顧四周', done: s => Math.abs(Math.atan2(Math.sin(fp.yaw - s.yaw), Math.cos(fp.yaw - s.yaw))) > 0.8 },
     { text: '做任務時，黃色菱形就是要點的東西；畫面上方會寫目標，箭頭指出往哪走。右上角「任務清單」可以看全部任務。', button: '知道了' },
   ];

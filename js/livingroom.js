@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { buildDog, buildCat } from './pets.js';
-import { SPACE, STYLE, WARM, OBSTACLES, WALK, ROOMS, ceilingLight, std, box, wall, wallRun, slab, cyl, ball, sprite, tileTexture, woodTexture, wallTexture } from './kit.js';
+import { SPACE, BUILD, STYLE, WARM, OBSTACLES, WALK, ROOMS, ceilingLight, std, box, wall, wallRun, slab, cyl, ball, sprite, tileTexture, woodTexture, wallTexture } from './kit.js';
 import { buildDogRoom, DOGROOM } from './dogroom.js';
 import { buildKitchen, KITCHEN } from './kitchen.js';
 
@@ -22,6 +22,7 @@ function buildShell(g) {
   const floor = new THREE.Mesh(new THREE.PlaneGeometry(ROOM.W, ROOM.D), std(0xffffff, { map: floorTex, roughness: 0.45 }));
   floor.rotation.x = -Math.PI / 2;
   floor.receiveShadow = true;
+  floor.userData.structural = true;
   g.add(floor);
 
   const ceilTex = woodTexture('#d0a877', '#7a5632', 8);
@@ -29,6 +30,7 @@ function buildShell(g) {
   const ceil = new THREE.Mesh(new THREE.PlaneGeometry(ROOM.W, ROOM.D), std(0xffffff, { map: ceilTex }));
   ceil.rotation.x = Math.PI / 2;
   ceil.position.y = H;
+  ceil.userData.structural = true;
   g.add(ceil);
 
   // 西牆、東牆
@@ -41,7 +43,8 @@ function buildShell(g) {
   wall(g, wallMat, (x2 + HW) / 2, H / 2, -HD, HW - x2, H, 0);
   wall(g, wallMat, (x1 + x2) / 2, (h + H) / 2, -HD, x2 - x1, H - h, 0);
 
-  // 門框與打開的門片
+  // 門框與打開的門片（房間結構）
+  BUILD.structural = true;
   const frame = std(0x3a2418, { roughness: 0.5 });
   box(g, 0.07, h, 0.14, frame, x1, h / 2, -HD);
   box(g, 0.07, h, 0.14, frame, x2, h / 2, -HD);
@@ -53,6 +56,7 @@ function buildShell(g) {
   box(leaf, 0.56, 0.7, 0.05, std(0x4a2f20, { roughness: 0.5 }), -0.42, 1.45, 0);
   box(leaf, 0.56, 0.6, 0.05, std(0x4a2f20, { roughness: 0.5 }), -0.42, 0.5, 0);
   g.add(leaf);
+  BUILD.structural = false;
 
   buildSouthDoors(g, wallMat);
   buildCorridor(g, wallMat, tiles);
@@ -62,6 +66,7 @@ function buildShell(g) {
 function buildSouthDoors(room, wallMat) {
   const g = new THREE.Group();
   g.name = 'southDoors';
+  g.userData.structural = true;          // 整面落地門是房間結構
   room.add(g);
   const wood = std(0x2c1a13, { roughness: 0.45 });
   const glass = std(0x0b0c10, { roughness: 0.08, metalness: 0.6 });
@@ -121,7 +126,9 @@ function buildCorridor(g, wallMat, tiles) {
 
   // 書房、主臥室的門
   const door = std(0x3a2418, { roughness: 0.5 });
+  BUILD.structural = true;
   for (const z of [-3.2, -5.0]) box(g, 0.05, 2.0, 0.85, door, x1 + 0.02, 1.0, z);
+  BUILD.structural = false;
 
   // 走廊盡頭：通往廚房的門洞
   const kd = KITCHEN.door;
@@ -389,9 +396,9 @@ export function buildLivingRoom(scene) {
   buildDogRoom(g);
   buildKitchen(g);
 
-  // 屋子的平面統一放大（高度不變）。寵物不放進這個群組，大小才不會跟著被拉寬
+  // 屋子的群組：建好所有東西後由 layout.js 換算成實際大小（房間放大、家具不放大）。
+  // 寵物不放進這個群組
   g.name = 'world';
-  g.scale.set(SPACE, 1, SPACE);
 
   // 巴福柔一開始站在沙發後方通往走廊的走道，之後會在屋裡到處走
   const dog = buildDog();

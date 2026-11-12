@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { OBSTACLES, WALK, ROOMS, ceilingLight, std, box, wall, wallRun, slab, cyl, canvasTexture, speckle, woodTexture, wallTexture } from './kit.js';
+import { BUILD, OBSTACLES, WALK, ROOMS, ceilingLight, std, box, wall, wallRun, slab, cyl, canvasTexture, speckle, woodTexture, wallTexture } from './kit.js';
 
 // 廚房：走廊盡頭，佔整個屋寬。尺寸為依照片估計。
 // 從走廊進來（南牆靠東端的門洞，有寵物柵欄）：
@@ -60,6 +60,7 @@ export function buildKitchen(g) {
 
   // 門洞的邊框，以及白色寵物柵欄（平常關著，開關的動作在 gate.js）
   const dx = (door.x1 + door.x2) / 2;
+  BUILD.structural = true;
   box(g, 0.05, door.h, 0.2, cream, door.x1, door.h / 2, zS);
   box(g, 0.05, door.h, 0.2, cream, door.x2, door.h / 2, zS);
   box(g, door.x2 - door.x1 + 0.05, 0.05, 0.2, cream, dx, door.h + 0.025, zS);
@@ -73,8 +74,10 @@ export function buildKitchen(g) {
   gateHit.position.set(0, 0.42, -0.36);
   gate.add(gateHit);
   gate.name = 'kitchenGate';
+  gate.userData.structural = true;       // 柵欄跟著門洞一起放大
   gate.userData.interact = 'gate';
   g.add(gate);
+  BUILD.structural = false;
 
   /* ----- 北牆 ----- */
   const cD = 0.55, cH = 0.82;                       // 流理台深度與高度

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { OBSTACLES, WALK, ROOMS, ceilingLight, std, box, wallRun, slab, cyl, ball, canvasTexture, speckle, tileTexture, woodTexture, wallTexture } from './kit.js';
+import { BUILD, OBSTACLES, WALK, ROOMS, ceilingLight, std, box, wallRun, slab, cyl, ball, canvasTexture, speckle, tileTexture, woodTexture, wallTexture } from './kit.js';
 
 // 狗房（走廊最裡面、西側的房間）與它附的廁所。尺寸為依照片估計。
 // 狗房門開在走廊西牆（狗房東牆）靠北端；廁所在狗房南側，門開在狗房南牆靠東端。
@@ -54,7 +54,8 @@ function buildRoom(g) {
   wallRun(g, wallMat, 'z', x1, zN, zS, H, Math.PI / 2);                        // 西（窗）
   wallRun(g, panelMat, 'z', x2, zN, zS, H, -Math.PI / 2, [[door.z1, door.z2, door.h]]); // 東（木紋壁板、房門）
 
-  // 房門框與向內打開、貼著北牆的門片
+  // 房門框與向內打開、貼著北牆的門片；廁所門框（都是房間結構）
+  BUILD.structural = true;
   const dz = (door.z1 + door.z2) / 2;
   box(g, 0.16, door.h, 0.06, dark, x2, door.h / 2, door.z1);
   box(g, 0.16, door.h, 0.06, dark, x2, door.h / 2, door.z2);
@@ -68,6 +69,7 @@ function buildRoom(g) {
   box(g, 0.05, bd.h, 0.14, white, bd.x1, bd.h / 2, zS);
   box(g, 0.05, bd.h, 0.14, white, bd.x2, bd.h / 2, zS);
   box(g, bd.x2 - bd.x1 + 0.05, 0.05, 0.14, white, (bd.x1 + bd.x2) / 2, bd.h + 0.025, zS);
+  BUILD.structural = false;
 
   // 西牆：鐵窗與冷氣
   const wz = -9.6;
@@ -122,7 +124,8 @@ function buildBath(g) {
   wallRun(g, wallMat, 'z', x1, zN, zS, H, Math.PI / 2);
   wallRun(g, wallMat, 'z', x2, zN, zS, H, -Math.PI / 2);
 
-  // 向內打開、貼著東牆的白色門片（下方有通風百葉）
+  // 向內打開、貼著東牆的白色門片（下方有通風百葉）；淋浴間的門檻、框、拉門（都是房間結構）
+  BUILD.structural = true;
   box(g, 0.04, 1.96, 0.66, white, x2 - 0.05, 0.98, zN + 0.38);
   box(g, 0.045, 0.2, 0.36, std(0xd6d6d2), x2 - 0.05, 0.3, zN + 0.38);
   ball(g, 0.03, chrome, x2 - 0.09, 1.0, zN + 0.66);
@@ -136,6 +139,7 @@ function buildBath(g) {
   box(g, mid - x1 - 0.04, sh - 0.14, 0.015, frosted, (x1 + mid) / 2, sh / 2 + 0.03, sz);
   box(g, x2 - x1 - 0.02, 0.35, 0.02, darkTile, mid, 0.175, zS - 0.01);             // 牆面下緣深色磚
   OBSTACLES.push([x1, mid, sz - 0.04, sz + 0.04]);
+  BUILD.structural = false;
   // 淋浴間內的置物架（尿布墊在任務二 clean.js 裡）
   box(g, 0.02, 0.06, 0.25, std(0x2f8f6a), x2 - 0.02, 1.15, zS - 0.5);
 

@@ -26,20 +26,34 @@ export const WARM = WARMS[new URLSearchParams(location.search).get('warm')] || W
 
 export const STYLE = { name: STYLES[styleName] ? styleName : 'pixel', ...(STYLES[styleName] || STYLES.pixel) };
 
-// 整個屋子的平面放大倍率：房間、走道、門洞、家具的位置和佔地都照這個比例放大，
-// 高度不變，人和寵物的大小也不變，所以每個空隙都變寬、比較不會到處撞到東西。
-// 各房間的程式照原本估計的尺寸（「配置座標」）寫，由 world 群組統一放大（livingroom.js）；
-// 走路用的範圍資料放進下面三個清單時會自動換算成放大後的實際座標。
+// 整個屋子的平面放大倍率：只放大「房間」（牆、地板、天花板、門洞、門），家具維持原尺寸。
+// 各房間的程式照原本估計的尺寸（「配置座標」）寫；全部建好後 layout.js 統一換算：
+//   房間結構：留在 world 群組裡，平面放大 SPACE 倍（高度不變）
+//   家具：尺寸不變，靠牆的繼續貼著那面牆，在房間中間的照比例往外移
+// 建房間結構的程式要包在 BUILD.structural = true / false 之間，box() 等做出來的東西才會被當成房間的一部分。
 export const SPACE = 1.25;
-function scaledList(scale) {
+export const BUILD = { structural: false, laidOut: false };
+// 碰撞、可走範圍、房間清單：layout.js 換算之前存配置座標；換算之後再加進來的（例如柵欄）都當成房間結構直接放大
+function trackedList() {
   const list = [];
-  list.push = (...items) => { items.forEach(scale); return Array.prototype.push.apply(list, items); };
+  list.push = (...items) => {
+    for (const it of items) {
+      if (BUILD.structural) it.structural = true;
+      if (BUILD.laidOut) scaleItem(it);
+    }
+    return Array.prototype.push.apply(list, items);
+  };
   return list;
 }
-const scaleRect = r => { for (let i = 0; i < 4; i++) r[i] *= SPACE; };
+export function scaleItem(it) {
+  if (Array.isArray(it)) { for (let i = 0; i < 4; i++) it[i] *= SPACE; return; }
+  for (let i = 0; i < 4; i++) it.rect[i] *= SPACE;
+  if (it.spot) { it.spot[0] *= SPACE; it.spot[1] *= SPACE; }
+  if (it.center) { it.center[0] *= SPACE; it.center[2] *= SPACE; it.r *= SPACE; }
+}
 
 // 第一人稱視角的碰撞方塊 [x1, x2, z1, z2]
-export const OBSTACLES = scaledList(scaleRect);
+export const OBSTACLES = trackedList();
 
 /* ---------- 貼圖 ---------- */
 
@@ -126,6 +140,7 @@ export const std = (color, o = {}) => {
 
 export function box(parent, w, h, d, mat, x, y, z) {
   const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+  if (BUILD.structural) m.userData.structural = true;
   m.position.set(x, y, z);
   m.castShadow = m.receiveShadow = true;
   parent.add(m);
@@ -138,6 +153,7 @@ export function wall(parent, mat, cx, cy, cz, w, h, rotY) {
   const uv = geo.attributes.uv;                       // 貼圖每 0.8m 重複一次
   for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * w / 0.8, uv.getY(i) * h / 0.8);
   const m = new THREE.Mesh(geo, mat);
+  m.userData.structural = true;          // 牆一定是房間結構
   m.position.set(cx, cy, cz);
   m.rotation.y = rotY;
   m.receiveShadow = true;
@@ -149,6 +165,7 @@ export function wall(parent, mat, cx, cy, cz, w, h, rotY) {
 
 export function cyl(parent, r1, r2, h, mat, x, y, z, seg = 20) {
   const m = new THREE.Mesh(new THREE.CylinderGeometry(r1, r2, h, seg), mat);
+  if (BUILD.structural) m.userData.structural = true;
   m.position.set(x, y, z);
   m.castShadow = m.receiveShadow = true;
   parent.add(m);
@@ -157,6 +174,7 @@ export function cyl(parent, r1, r2, h, mat, x, y, z, seg = 20) {
 
 export function ball(parent, r, mat, x, y, z, sx = 1, sy = 1, sz = 1) {
   const m = new THREE.Mesh(new THREE.SphereGeometry(r, 24, 16), mat);
+  if (BUILD.structural) m.userData.structural = true;
   m.position.set(x, y, z);
   m.scale.set(sx, sy, sz);
   m.castShadow = true;
@@ -197,6 +215,7 @@ export function wallRun(parent, mat, axis, fixed, a, b, h, rotY, doors = []) {
 // 水平面（地板朝上、天花板朝下）
 export function slab(parent, mat, x1, x2, z1, z2, y, up = true) {
   const m = new THREE.Mesh(new THREE.PlaneGeometry(x2 - x1, z2 - z1), mat);
+  m.userData.structural = true;          // 地板、天花板一定是房間結構
   m.rotation.x = up ? -Math.PI / 2 : Math.PI / 2;
   m.position.set((x1 + x2) / 2, y, (z1 + z2) / 2);
   m.receiveShadow = true;
@@ -205,13 +224,9 @@ export function slab(parent, mat, x1, x2, z1, z2, y, up = true) {
 }
 
 // 可行走範圍 [x1, x2, z1, z2]；房間與門洞各一塊，門洞要往兩側各多伸出一些
-export const WALK = scaledList(scaleRect);
+export const WALK = trackedList();
 // 房間名稱與範圍，用來顯示目前所在位置；spot 是進房間時站的位置，center、r 是俯瞰時對準的點與距離
-export const ROOMS = scaledList(room => {
-  scaleRect(room.rect);
-  if (room.spot) { room.spot[0] *= SPACE; room.spot[1] *= SPACE; }
-  if (room.center) { room.center[0] *= SPACE; room.center[2] *= SPACE; room.r *= SPACE; }
-});
+export const ROOMS = trackedList();
 
 // 吸頂燈的光：往下照的聚光燈，reach 是照得到的距離（公尺）
 export function ceilingLight(parent, x, y, z, reach = 8, mapSize = 1024, power = 1) {

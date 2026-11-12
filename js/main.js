@@ -13,6 +13,7 @@ import { initWander } from './wander.js';
 import { initLitter, initCatFeed } from './side.js';
 import { initFlow } from './flow.js';
 import { initPlay } from './play.js';
+import { relayout } from './layout.js';
 
 const canvas = document.getElementById('scene');
 // 先算到一張貼圖，再用後製決定風格：低解析度放大、色階、網點、描邊、色調
@@ -102,6 +103,9 @@ function missionChanged() {
   if (flow) flow.check();
   renderer.shadowMap.needsUpdate = true;     // 任務物件出現或消失，陰影要重算
 }
+
+// 房間和任務物件都建好了：把屋子換算成實際大小（房間放大、家具維持原尺寸）
+relayout(scene);
 
 // 廚房柵欄：平常關著，點一下開關；開著離開廚房會跳出警示
 const alertBox = document.getElementById('alert');

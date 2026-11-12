@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { std, box, cyl, OBSTACLES, SPACE } from './kit.js';
+import { std, box, cyl, OBSTACLES } from './kit.js';
 import { ROOM } from './livingroom.js';
 import { findPath } from './nav.js';
 
@@ -25,9 +25,6 @@ const TARGETS = [
 
 const HD = ROOM.D / 2;
 const BOWL = [0.25, HD - 0.5];
-// 碗放大後實際的位置，以及巴福柔吃飯時站的位置（頭朝東對著碗）
-const BOWL_AT = [BOWL[0] * SPACE, BOWL[1] * SPACE];
-const EAT_SPOT = [BOWL_AT[0] - 0.55, BOWL_AT[1]];
 const EAT_TIME = 4;              // 吃幾秒
 const DOG_SPEED = 1.2;
 
@@ -96,6 +93,13 @@ export function initFeed({ scene, dog }) {
   let walk = null;
   const owns = () => !!walk;
   const DOG_R = 0.22;
+  // 碗的實際位置（屋子換算成實際大小之後才知道），以及巴福柔吃飯時站的位置（頭朝東對著碗）
+  const BOWL_AT = [0, 0], EAT_SPOT = [0, 0];
+  const locate = () => {
+    const at = bowl.getWorldPosition(new THREE.Vector3());
+    BOWL_AT[0] = at.x; BOWL_AT[1] = at.z;
+    EAT_SPOT[0] = at.x - 0.55; EAT_SPOT[1] = at.z;
+  };
   const atBowl = () => Math.hypot(dog.position.x - EAT_SPOT[0], dog.position.z - EAT_SPOT[1]) < 0.15;
   const blocked = () => !!walk && !walk.path.length && !atBowl() && walk.eat === 0;
   const plan = () => findPath(dog.position.x, dog.position.z, EAT_SPOT[0], EAT_SPOT[1], DOG_R);
@@ -143,6 +147,7 @@ export function initFeed({ scene, dog }) {
       // 碗裝好了：放回原位，巴福柔走過去
       freeze.visible = true;
       bowl.visible = true;
+      locate();
       walk = { path: plan(), eat: 0, retry: 0 };
     }
     state.at++;
