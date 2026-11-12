@@ -76,7 +76,7 @@ const camera = new THREE.PerspectiveCamera(70, 1, 0.04, 60);
 camera.rotation.order = 'YXZ';
 
 const { dog, cat, southDoors } = buildLivingRoom(scene);
-const DOG_HOME = dog.position.toArray();
+const DOG_HOME = dog.position.toArray(), DOG_YAW = dog.rotation.y;
 const mission = initMission({ scene, dog, onChange: () => mission.onChange && mission.onChange() });
 
 /* ---------- 視角 ---------- */
@@ -346,6 +346,46 @@ function move(dt) {
   if (walkable(fp.x, fp.z + dz, v.radius)) fp.z += dz;
 }
 
+/* ---------- 牽繩：巴福柔保持一段距離跟著走 ---------- */
+
+const LEASH = 1.5;                        // 超過這個距離牠才跟上來（公尺）
+const leashLine = new THREE.Line(
+  new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]),
+  new THREE.LineBasicMaterial({ color: 0xd8452c }));
+leashLine.frustumCulled = false;
+leashLine.visible = false;
+leashLine.raycast = () => {};
+scene.add(leashLine);
+
+function followLeash(dt) {
+  const on = mission.state.leashed && mode !== 'dog';
+  leashLine.visible = on;
+  if (!mission.state.leashed) {
+    dog.position.set(...DOG_HOME);
+    dog.rotation.y = DOG_YAW;
+    return;
+  }
+  if (!on) return;
+  const dx = fp.x - dog.position.x, dz = fp.z - dog.position.z, d = Math.hypot(dx, dz);
+  if (d > LEASH) {
+    const step = Math.min(d - LEASH, 3 * dt);
+    const nx = dog.position.x + dx / d * step, nz = dog.position.z + dz / d * step;
+    if (walkable(nx, dog.position.z, 0.15)) dog.position.x = nx;
+    if (walkable(dog.position.x, nz, 0.15)) dog.position.z = nz;
+    // 牽繩拉太長（被家具卡住）時直接跟到身邊
+    if (d > LEASH + 1.2) dog.position.set(fp.x - dx / d * LEASH, 0, fp.z - dz / d * LEASH);
+  }
+  if (d > 0.3) {                          // 臉朝著人
+    const want = Math.atan2(-dx, -dz);
+    dog.rotation.y += Math.atan2(Math.sin(want - dog.rotation.y), Math.cos(want - dog.rotation.y)) * Math.min(1, dt * 6);
+  }
+  // 牽繩：從手邊拉到巴福柔的脖子
+  const p = leashLine.geometry.attributes.position;
+  p.setXYZ(0, fp.x + Math.cos(fp.yaw) * 0.25, VIEWS[mode].eye - 0.55, fp.z - Math.sin(fp.yaw) * 0.25);
+  p.setXYZ(1, dog.position.x - Math.sin(dog.rotation.y) * 0.32, 0.66, dog.position.z - Math.cos(dog.rotation.y) * 0.32);
+  p.needsUpdate = true;
+}
+
 /* ---------- 主迴圈 ---------- */
 
 function resize() {
@@ -377,14 +417,7 @@ function frame() {
     southDoors.visible = focus !== 0 || camera.position.z < HD;
   } else {
     move(dt);
-    // 繫上牽繩後，巴福柔會跟在身後
-    if (mission.state.leashed && mode !== 'dog') {
-      const bx = fp.x + Math.sin(fp.yaw) * 0.8, bz = fp.z + Math.cos(fp.yaw) * 0.8;
-      dog.position.x += (bx - dog.position.x) * Math.min(1, dt * 3);
-      dog.position.z += (bz - dog.position.z) * Math.min(1, dt * 3);
-    } else if (!mission.state.leashed) {
-      dog.position.set(...DOG_HOME);
-    }
+    followLeash(dt);
     southDoors.visible = true;
     camera.position.set(fp.x, VIEWS[mode].eye, fp.z);
     camera.rotation.set(fp.pitch, fp.yaw, 0);

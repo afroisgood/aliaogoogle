@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { DOG_SIDE, CAT_LOAF } from './pixelart.js';
+import { buildDog, buildCat } from './pets.js';
 import { STYLE, WARM, OBSTACLES, WALK, ROOMS, ceilingLight, std, box, wall, wallRun, slab, cyl, ball, sprite, tileTexture, woodTexture, wallTexture } from './kit.js';
 import { buildDogRoom, DOGROOM } from './dogroom.js';
 import { buildKitchen, KITCHEN } from './kitchen.js';
@@ -386,13 +386,15 @@ export function buildLivingRoom(scene) {
   buildKitchen(g);
 
   // 巴福柔站在沙發後方通往走廊的走道
-  const dog = sprite(DOG_SIDE, 0.72);
+  const dog = buildDog();
   dog.position.set(1.72, 0, -0.55);
+  dog.rotation.y = Math.PI * 0.85;      // 面向大門
   g.add(dog);
 
   // 貓趴在白色櫃子上
-  const cat = sprite(CAT_LOAF, 0.2);
+  const cat = buildCat();
   cat.position.set(0.95, 1.2, CAB_Z);
+  cat.rotation.y = Math.PI * 0.4;
   g.add(cat);
 
   // 燈光：吸頂燈
