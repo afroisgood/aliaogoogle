@@ -157,7 +157,7 @@ function buildWestWall(g) {
   // 壁掛電視
   const tvZ = 0.25;
   box(g, 0.05, 0.64, 1.12, black, x + 0.06, 1.5, tvZ);
-  box(g, 0.01, 0.58, 1.06, std(0x05060a, { roughness: 0.05, metalness: 0.5 }), x + 0.09, 1.5, tvZ);
+  box(g, 0.01, 0.58, 1.06, std(0x05060a, { roughness: 0.05, metalness: 0.5 }), x + 0.09, 1.5, tvZ).name = 'tvScreen';   // 看電視的畫面在 tv.js
 
   // 深色木電視櫃（玻璃門）
   const dark = std(0x3b2317, { roughness: 0.5 });

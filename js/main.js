@@ -15,6 +15,7 @@ import { initFlow } from './flow.js';
 import { initPlay } from './play.js';
 import { relayout } from './layout.js';
 import { openGallery } from './walk.js';
+import { initTV } from './tv.js';
 
 const canvas = document.getElementById('scene');
 // 先算到一張貼圖，再用後製決定風格：低解析度放大、色階、網點、描邊、色調
@@ -148,6 +149,9 @@ const play = initPlay({ dog, fp, walkable,
   canPlay: () => mode !== 'overview' && mode !== 'dog' && !mission.state.leashed && !feed.owns() && !mission.wants('dog') });
 clickables.push(play);
 
+// 客廳電視：走到前面會問要不要看「災」。和巴福柔互動、或有對話卡片時先不問
+const tv = initTV({ scene, fp,
+  active: () => mode !== 'overview' && !play.state.open && document.getElementById('card').hidden && document.getElementById('walk').hidden });
 const stunBox = document.getElementById('stun');
 const hint = document.getElementById('hint');
 
@@ -477,6 +481,7 @@ function frame() {
   }
   for (const m of [...missions, ...sides]) m.update(clock.elapsedTime);
   flow.update();
+  tv.update(dt);
   stunBox.classList.toggle('on', play.state.still);        // 被按摩時畫面泛一層暖色
   updateCompass(clock.elapsedTime);
   wander.update(dt, clock.elapsedTime);
@@ -510,4 +515,4 @@ setView('overview');
 frame();
 
 // 方便除錯與之後擴充
-window.__app = { setView, goRoom, fp, orbit, camera, mission, clean, feed, litter, catFeed, gate, play, dog, cat, kitten };
+window.__app = { setView, goRoom, fp, orbit, camera, mission, clean, feed, litter, catFeed, gate, play, tv, dog, cat, kitten };
