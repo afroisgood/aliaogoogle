@@ -152,26 +152,6 @@ button:active, button.active, button[aria-expanded="true"] {
 .task-list li.done span { opacity: .55; text-decoration: line-through; }
 .task-list li.empty { opacity: .6; font-size: 13px; }
 
-#joystick {
-  position: fixed;
-  left: 18px;
-  bottom: calc(var(--hud-h) + env(safe-area-inset-bottom) + 40px);
-  width: 110px;
-  height: 110px;
-  background: rgba(0, 0, 0, .35);
-  border: 3px solid var(--metal-hi);
-  touch-action: none;
-}
-#stick {
-  position: absolute;
-  left: 50%; top: 50%;
-  width: 44px; height: 44px;
-  margin: -22px 0 0 -22px;
-  background: var(--metal-hi);
-  border: 3px solid;
-  border-color: #c8c0b4 var(--metal-lo) var(--metal-lo) #c8c0b4;
-  pointer-events: none;
-}
 [hidden] { display: none !important; }
 
 /* ----- 任務 ----- */
@@ -241,7 +221,7 @@ button:active, button.active, button[aria-expanded="true"] {
 .walk-nav button:disabled { opacity: .35; }
 .walk-nav .primary { background: #8a1c14; color: #fff; }
 
-#day-btn {
+#day-btn, #gallery-btn {
   font-size: 13px;
   padding: 3px 8px;
   background: #000;
@@ -359,7 +339,7 @@ button.primary { background: #8a1c14; color: #fff; }
 #stun { position: fixed; inset: 0; z-index: 11; background: #e8a23c; opacity: 0; pointer-events: none; transition: opacity .4s; }
 #stun.on { opacity: .16; }
 
-/* 身體狀況（痠痛）提示：畫面右下，搖桿的另一邊，不會和上方的目標文字擠在一起 */
+/* 身體狀況（痠痛）提示：畫面右下，不會和上方的目標文字擠在一起 */
 #ache {
   position: fixed;
   bottom: calc(var(--hud-h) + env(safe-area-inset-bottom) + 150px);
@@ -377,3 +357,40 @@ button.primary { background: #8a1c14; color: #fff; }
 #ache small { font-size: 11px; color: #e8c020; }
 #ache.new { animation: ache-in 2.4s steps(2, start) 1; }
 @keyframes ache-in { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.18); border-color: #ffd23c; } }
+
+/* ----- 散步指引圖集 ----- */
+.walk-head { display: flex; align-items: center; gap: 8px; }
+.walk-head .walk-step { flex: 1; }
+.walk-head button { padding: 6px 10px; font-size: 14px; }
+.walk-grid {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 8px;
+  align-content: start;
+}
+.walk-thumb { position: relative; padding: 0; aspect-ratio: 4 / 3; overflow: hidden; background: #000; }
+.walk-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.walk-thumb span {
+  position: absolute; left: 4px; top: 4px;
+  min-width: 24px; padding: 1px 6px;
+  background: #8a1c14; color: #fff; font-size: 14px; text-align: center;
+}
+
+/* 手機（窄螢幕）：標題和「任務清單」一排，房間、今天、散步圖集排到第二排，字才不會被切斷 */
+#topbar h1, #topbar button { white-space: nowrap; }
+.topbar-break { display: none; }
+@media (max-width: 560px) {
+  #topbar { flex-wrap: wrap; row-gap: 6px; }
+  #topbar h1 { order: 0; font-size: 24px; }
+  #tasks-toggle { order: 1; }
+  .topbar-break { display: block; order: 2; flex-basis: 100%; height: 0; }
+  #room-name, #day-btn, #gallery-btn { order: 3; }
+  #goal { top: calc(max(8px, env(safe-area-inset-top)) + 86px); }
+  #compass { top: calc(max(8px, env(safe-area-inset-top)) + 152px); }
+  #alert { top: calc(max(8px, env(safe-area-inset-top)) + 200px); }
+  #pet-menu.compact { top: calc(max(8px, env(safe-area-inset-top)) + 190px); }
+  #tasks-panel { top: 90px; }
+}

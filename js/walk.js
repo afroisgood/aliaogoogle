@@ -48,3 +48,46 @@ export function openWalk(onDone) {
   root.hidden = false;
   render();
 }
+
+// 散步指引圖集：不用做任務，隨時打開來看。先看到全部縮圖，點一張進去看大圖和說明，可以前後翻。
+export function openGallery() {
+  const root = document.getElementById('walk');
+  const close = () => { root.hidden = true; root.innerHTML = ''; };
+  const grid = () => {
+    root.innerHTML = `
+      <div class="walk-head">
+        <span class="walk-step">散步指引圖集（共 ${WALK_STEPS.length} 張，照路線順序）</span>
+        <button id="walk-close">✕ 關閉</button>
+      </div>
+      <div class="walk-grid">${WALK_STEPS.map((s, i) => `
+        <button class="walk-thumb" data-n="${i}">
+          <img src="assets/walk/${s.photo}" alt="第 ${i + 1} 張街景" loading="lazy">
+          <span>${i + 1}</span>
+        </button>`).join('')}
+      </div>`;
+    root.querySelector('#walk-close').onclick = close;
+    root.querySelectorAll('[data-n]').forEach(b => b.onclick = () => view(+b.dataset.n));
+  };
+  const view = n => {
+    const s = WALK_STEPS[n], last = n === WALK_STEPS.length - 1;
+    root.innerHTML = `
+      <div class="walk-head">
+        <button id="walk-back">◂ 圖集</button>
+        <span class="walk-step">第 ${n + 1} 張／共 ${WALK_STEPS.length} 張</span>
+        <button id="walk-close">✕ 關閉</button>
+      </div>
+      <img class="walk-photo" src="assets/walk/${s.photo}" alt="第 ${n + 1} 張街景">
+      <p class="walk-text">${s.text}</p>
+      <div class="walk-nav">
+        <button id="walk-prev" ${n ? '' : 'disabled'}>◂ 上一張</button>
+        <button id="walk-next" class="primary" ${last ? 'disabled' : ''}>下一張 ▸</button>
+      </div>`;
+    root.querySelector('#walk-back').onclick = grid;
+    root.querySelector('#walk-close').onclick = close;
+    root.querySelector('#walk-prev').onclick = () => view(n - 1);
+    root.querySelector('#walk-next').onclick = () => view(n + 1);
+    if (!last) new Image().src = `assets/walk/${WALK_STEPS[n + 1].photo}`;
+  };
+  root.hidden = false;
+  grid();
+}

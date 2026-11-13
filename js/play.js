@@ -12,7 +12,7 @@ const ACTIONS = [
   { id: 'shake', label: '握手', say: '巴福柔坐下，把手伸給你。', time: 3.5 },
   { id: 'down', label: '趴下', say: '巴福柔乖乖趴下。', time: 5 },
   { id: 'kick', label: '踹人', say: '巴福柔壓低身體……', time: 2 },
-  { id: 'ride', label: '被人騎', say: '你騎上巴福柔了！用搖桿或點地板前進。' },
+  { id: 'ride', label: '被人騎', say: '你騎上巴福柔了！點地板或用方向鍵前進。' },
   { id: 'acu', label: '點穴', say: '巴福柔靠過來，準備幫你按一按……', time: 4.4 },
 ];
 

@@ -14,6 +14,7 @@ import { initLitter, initCatFeed } from './side.js';
 import { initFlow } from './flow.js';
 import { initPlay } from './play.js';
 import { relayout } from './layout.js';
+import { openGallery } from './walk.js';
 
 const canvas = document.getElementById('scene');
 // 先算到一張貼圖，再用後製決定風格：低解析度放大、色階、網點、描邊、色調
@@ -149,15 +150,12 @@ clickables.push(play);
 
 const stunBox = document.getElementById('stun');
 const hint = document.getElementById('hint');
-const joystick = document.getElementById('joystick');
-const stick = document.getElementById('stick');
 
 function setView(name) {
   mode = name;
   const v = VIEWS[name];
   document.querySelectorAll('#views button').forEach(b => b.classList.toggle('active', b.dataset.view === name));
   hint.textContent = v.hint;
-  joystick.hidden = name === 'overview';
   stopWalk();
   scene.fog = name === 'overview' ? null : fog;
   dog.visible = name !== 'dog';
@@ -195,6 +193,7 @@ function goRoom(i) {
   }
 }
 roomChip.addEventListener('click', () => goRoom(focus + 1));
+document.getElementById('gallery-btn').addEventListener('click', openGallery);   // 隨時看散步指引圖集
 
 function currentRoomName() {
   if (mode === 'overview') return stops[focus].name;
@@ -250,36 +249,13 @@ canvas.addEventListener('wheel', e => {
   if (mode === 'overview') zoom(e.deltaY > 0 ? 1.1 : 0.9);
 }, { passive: false });
 
-/* ---------- 移動：鍵盤與搖桿 ---------- */
+/* ---------- 移動：鍵盤（觸控用點地板走路） ---------- */
 
 const keys = new Set();
 addEventListener('keydown', e => keys.add(e.code));
 addEventListener('keyup', e => keys.delete(e.code));
 addEventListener('blur', () => keys.clear());
 
-const joy = { x: 0, y: 0, id: null };
-function joyUpdate(e) {
-  const r = joystick.getBoundingClientRect();
-  let x = (e.clientX - r.left - r.width / 2) / (r.width / 2);
-  let y = (e.clientY - r.top - r.height / 2) / (r.height / 2);
-  const len = Math.hypot(x, y);
-  if (len > 1) { x /= len; y /= len; }
-  joy.x = x; joy.y = y;
-  stick.style.transform = `translate(${x * 32}px, ${y * 32}px)`;
-}
-joystick.addEventListener('pointerdown', e => {
-  joy.id = e.pointerId;
-  joystick.setPointerCapture(e.pointerId);
-  joyUpdate(e);
-});
-joystick.addEventListener('pointermove', e => { if (e.pointerId === joy.id) joyUpdate(e); });
-const joyEnd = e => {
-  if (e.pointerId !== joy.id) return;
-  joy.id = null; joy.x = joy.y = 0;
-  stick.style.transform = '';
-};
-joystick.addEventListener('pointerup', joyEnd);
-joystick.addEventListener('pointercancel', joyEnd);
 
 /* ---------- 點擊移動：在 10 公分格線上找路，會自己繞過家具、穿過門 ---------- */
 
@@ -352,7 +328,7 @@ function followPath(dt) {
 
 function move(dt) {
   const v = VIEWS[mode];
-  let f = -joy.y, s = joy.x;
+  let f = 0, s = 0;
   if (keys.has('KeyW') || keys.has('ArrowUp')) f += 1;
   if (keys.has('KeyS') || keys.has('ArrowDown')) f -= 1;
   if (keys.has('KeyD') || keys.has('ArrowRight')) s += 1;
