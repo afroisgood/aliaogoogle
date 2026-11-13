@@ -379,18 +379,12 @@ button.primary { background: #8a1c14; color: #fff; }
   background: #8a1c14; color: #fff; font-size: 14px; text-align: center;
 }
 
-/* 手機（窄螢幕）：標題和「任務清單」一排，房間、今天、散步圖集排到第二排，字才不會被切斷 */
+/* 手機（窄螢幕）：標題和所有按鈕維持一排，字和間距跟著螢幕寬度縮小，按鈕上的 ▸ 先收起來 */
 #topbar h1, #topbar button { white-space: nowrap; }
-.topbar-break { display: none; }
 @media (max-width: 560px) {
-  #topbar { flex-wrap: wrap; row-gap: 6px; }
-  #topbar h1 { order: 0; font-size: 24px; }
-  #tasks-toggle { order: 1; }
-  .topbar-break { display: block; order: 2; flex-basis: 100%; height: 0; }
-  #room-name, #day-btn, #gallery-btn { order: 3; }
-  #goal { top: calc(max(8px, env(safe-area-inset-top)) + 86px); }
-  #compass { top: calc(max(8px, env(safe-area-inset-top)) + 152px); }
-  #alert { top: calc(max(8px, env(safe-area-inset-top)) + 200px); }
-  #pet-menu.compact { top: calc(max(8px, env(safe-area-inset-top)) + 190px); }
-  #tasks-panel { top: 90px; }
+  #topbar { gap: 1.2vw; padding-left: 2vw; padding-right: 2vw; }
+  #topbar h1 { font-size: clamp(14px, 5vw, 26px); letter-spacing: 0; flex: 0 1 auto; min-width: 0; overflow: hidden; }
+  #room-name, #day-btn, #gallery-btn { font-size: clamp(10px, 3.2vw, 14px); padding: 3px 1.4vw; }
+  #tasks-toggle { font-size: clamp(10px, 3.4vw, 15px); padding: 5px 2vw; }
+  #topbar .arr { display: none; }
 }

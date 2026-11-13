@@ -470,7 +470,7 @@ function frame() {
     camera.rotation.set(fp.pitch, fp.yaw, Math.sin(clock.elapsedTime * 38) * 0.09 * jolt);
   }
   const label = currentRoomName();
-  if (label && roomChip.textContent !== label + ' ▸') roomChip.textContent = label + ' ▸';
+  if (label && roomChip.textContent !== label + ' ▸') roomChip.innerHTML = `${label}<span class="arr"> ▸</span>`;
   if (mode !== 'overview') {      // 走到哪個房間，俯瞰就跟著對準哪個房間
     const i = stops.findIndex(r => r.name === label);
     if (i >= 0 && i !== focus) { focus = i; orbit.target.set(...stops[i].center); orbit.r = stops[i].r; }

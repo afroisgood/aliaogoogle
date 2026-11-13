@@ -35,7 +35,7 @@ export function initFlow({ quests, startQuest, setView, fp }) {
   const later = { label: '稍後再說', go: () => {} };
 
   function renderDayBtn() {
-    dayBtn.textContent = day.at >= DAY.length ? '今天 ✓' : `今天 ${day.at}/${DAY.length} ▸`;
+    dayBtn.innerHTML = day.at >= DAY.length ? '今天 ✓' : `今天 ${day.at}/${DAY.length}<span class="arr"> ▸</span>`;
   }
 
   /* ----- 輪到的那一項 ----- */
