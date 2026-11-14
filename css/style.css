@@ -423,3 +423,59 @@ button.primary { background: #8a1c14; color: #fff; }
   background: #111;
 }
 #tv-full[hidden] { display: none !important; }
+
+/* ----- 聲音開關（底部狀態列） ----- */
+#sound-btn { min-width: 52px; padding: 2px 6px; color: #e8e0d0; }
+#sound-btn b { font-size: 22px; line-height: 1; color: #ffd23c; }
+#sound-btn.off b { color: #6a6258; text-decoration: line-through; }
+@media (max-width: 420px) {
+  #hud { gap: 4px; padding-left: 4px; padding-right: 4px; }
+  #hud .cell { min-width: 0; padding: 2px 6px; }
+  #views button { min-width: 0; padding: 9px 7px; }
+}
+
+/* ----- 任務的回饋 ----- */
+/* 完成一個步驟：目標文字閃一下 */
+#goal.pulse { animation: goal-pulse .6s ease-out; }
+@keyframes goal-pulse { 0% { transform: translateX(-50%) scale(1.12); background: #5a4a10; } 100% { transform: translateX(-50%) scale(1); } }
+
+/* 任務完成的橫幅 */
+#toast {
+  position: fixed;
+  top: 38%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 22;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 26px;
+  background: rgba(20, 16, 10, .92);
+  border: 3px solid #ffd23c;
+  box-shadow: 4px 4px 0 #000;
+  text-align: center;
+  pointer-events: none;
+}
+#toast b { font-size: 26px; color: #8fd18a; text-shadow: 2px 2px 0 #000; }
+#toast span { font-size: 15px; color: #ffd23c; }
+#toast.on { animation: toast-in 2.6s ease-out forwards; }
+@keyframes toast-in {
+  0% { transform: translate(-50%, -50%) scale(.3); opacity: 0; }
+  12% { transform: translate(-50%, -50%) scale(1.15); opacity: 1; }
+  20%, 80% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+  100% { transform: translate(-50%, -60%) scale(1); opacity: 0; }
+}
+
+/* 彩帶 */
+#confetti { position: fixed; inset: 0; z-index: 24; pointer-events: none; overflow: hidden; }
+#confetti i {
+  position: absolute;
+  top: -16px;
+  animation-name: confetti-fall;
+  animation-timing-function: cubic-bezier(.25, .6, .5, 1);
+  animation-fill-mode: forwards;
+}
+@keyframes confetti-fall {
+  to { transform: translate(var(--dx), 105vh) rotate(var(--rot)); }
+}

@@ -42,11 +42,12 @@
     <div class="cell stat"><b id="task-count">0/0</b><small>任務</small></div>
     <div class="cell face"><canvas id="portrait"></canvas><small>巴福柔</small></div>
     <nav id="views" class="cell" aria-label="視角">
-      <button data-view="overview" class="active">俯瞰</button>
-      <button data-view="human">人</button>
+      <button data-view="overview">俯瞰</button>
+      <button data-view="human" class="active">人</button>
       <button data-view="dog">狗</button>
       <button data-view="cat">貓</button>
     </nav>
+    <button id="sound-btn" class="cell" aria-pressed="true" title="聲音與震動開關"><b>♪</b><small>聲音</small></button>
   </footer>
 
   <section id="walk" hidden></section>
@@ -57,6 +58,8 @@
   <div id="flash"></div>
   <div id="stun"></div>
   <div id="coach" hidden></div>
+  <div id="toast" role="status" hidden></div>
+  <div id="confetti" aria-hidden="true"></div>
   <div id="card" hidden></div>
 
   <script type="module" src="js/main.js"></script>

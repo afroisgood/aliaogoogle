@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { std, box, cyl, OBSTACLES } from './kit.js';
 import { ROOM } from './livingroom.js';
 import { findPath } from './nav.js';
+import { play } from './sound.js';
 
 // 任務三：餵狗。
 // 狗碗在客廳白色櫃子西側的地上；綠色飼料袋靠在白色櫃子背板旁；凍乾罐在松木層架中間那層右半邊。
@@ -195,6 +196,7 @@ export function initFeed({ scene, dog }) {
     const want = Math.atan2(-(BOWL_AT[0] - p.x), -(BOWL_AT[1] - p.z));
     dog.rotation.y += Math.atan2(Math.sin(want - dog.rotation.y), Math.cos(want - dog.rotation.y)) * Math.min(1, dt * 6);
     dog.userData.eating = true;             // 低頭吃的動作在 pets.js
+    if (Math.floor(walk.eat / 0.32) !== Math.floor((walk.eat + dt) / 0.32)) play('munch');   // 一口一口吃的聲音
     walk.eat += dt;
     const left = Math.max(0, 1 - walk.eat / EAT_TIME);
     kibble.scale.set(Math.max(left, 0.01), 1, Math.max(left, 0.01));

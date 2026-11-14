@@ -16,6 +16,8 @@ import { initPlay } from './play.js';
 import { relayout } from './layout.js';
 import { openGallery } from './walk.js';
 import { initTV } from './tv.js';
+import { play as sound, buzz, initSoundToggle } from './sound.js';
+import { initFeedback } from './feedback.js';
 
 const canvas = document.getElementById('scene');
 // 先算到一張貼圖，再用後製決定風格：低解析度放大、色階、網點、描邊、色調
@@ -100,7 +102,9 @@ const catFeed = initCatFeed({ scene });
 const sides = [litter, catFeed];
 for (const m of sides) m.onChange = () => missionChanged();
 let renderTasks = () => {}, flow = null;
+const feedback = initFeedback({ quests: [...missions, ...sides], dog });   // 步驟完成的提示音、任務完成的彩帶
 function missionChanged() {
+  feedback.changed();
   renderTasks();
   if (flow) flow.check();
   renderer.shadowMap.needsUpdate = true;     // 任務物件出現或消失，陰影要重算
@@ -112,6 +116,7 @@ relayout(scene);
 // 廚房柵欄：平常關著，點一下開關；開著離開廚房會跳出警示
 const alertBox = document.getElementById('alert');
 const gate = initGate({ scene, onChange: () => {
+  if (gate.state.warning && alertBox.hidden) { sound('alarm'); buzz([100, 80, 100]); }
   alertBox.hidden = !gate.state.warning;
   wander.replan();
 } });
@@ -132,7 +137,7 @@ const HD = ROOM.D / 2 * SPACE;         // 客廳南牆（大門）實際的 z
 // yaw = 0 朝北（屋內深處），正值往西轉
 const VIEWS = {
   overview: { hint: '拖曳旋轉・滾輪或雙指縮放' },
-  human: { eye: 1.6, speed: 2.2, radius: 0.18, start: [1.7, 1.5], yaw: 0.72, pitch: -0.12, fov: 75,
+  human: { eye: 1.6, speed: 2.2, radius: 0.18, start: [1.7, 1.5], yaw: 0.35, pitch: -0.1, fov: 75,
     hint: '人的視角（從大門進來）・點一下地板走過去・拖曳環顧' },
   dog: { eye: 0.62, speed: 3.0, radius: 0.2, start: [1.72, -0.55], yaw: Math.PI * 0.8, pitch: 0.12, fov: 80,
     hint: '巴福柔的視角・點一下地板走過去・拖曳環顧' },
@@ -305,9 +310,18 @@ function tryInteract() {
   const { m, id } = pending;
   pending = null;
   stopWalk();
+  if (m.wants(id)) for (const name of m === play ? ['woof'] : sfxFor(id)) sound(name);
   m.trigger(id);
   return true;
 }
+
+// 點到每種任務目標時的音效
+const SFX = {
+  leash: ['pick'], dog: ['clip', 'woof'], bag: ['pick'], door: ['door'], stack: ['pick'], toilet: ['flush'],
+  backdoor: ['door'], bowl: ['pick'], kibble: ['pour'], freeze: ['pour'], drawer: ['drawer'], litter: ['scoop'],
+  catfood: ['pick'], gate: ['gate'], pad: ['pick'], poop: ['pick'], spot: ['place'], catbowl: ['pour', 'meow'],
+};
+const sfxFor = id => SFX[id] || SFX[id.replace(/\d+$/, '')] || ['pick'];
 
 function followPath(dt) {
   const v = VIEWS[mode];
@@ -511,7 +525,8 @@ function startQuest(m) {
 }
 renderTasks = initTasks(missions, sides, startQuest);
 flow = initFlow({ quests: { walk: mission, clean, feed, catFeed, litter }, startQuest, setView, fp });
-setView('overview');
+initSoundToggle(document.getElementById('sound-btn'));
+setView('human');      // 一打開就是人的視角，從大門進來
 frame();
 
 // 方便除錯與之後擴充

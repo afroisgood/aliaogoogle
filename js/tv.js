@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { play } from './sound.js';
 
 // 客廳的電視：走到電視前面會問要不要看「災」，要看就在電視螢幕上輪播劇照。
 // 看的時候附近會出現控制列，可以放大成全螢幕或關掉。說「不用」之後，要先走開再回來才會再問。
@@ -77,7 +78,7 @@ export function initTV({ scene, fp, active }) {
 
   let timer = 0, lastView = '';
   function act(what) {
-    if (what === 'on') { Object.assign(state, { on: true, at: 0 }); timer = 0; picture.visible = true; paint(); }
+    if (what === 'on') { play('tv'); Object.assign(state, { on: true, at: 0 }); timer = 0; picture.visible = true; paint(); }
     if (what === 'no') state.asked = true;
     if (what === 'off') { Object.assign(state, { on: false, asked: true, fullscreen: false }); picture.visible = false; full.hidden = true; }
     if (what === 'next' || what === 'prev') { state.at = (state.at + (what === 'next' ? 1 : PHOTOS.length - 1)) % PHOTOS.length; timer = 0; paint(); }
