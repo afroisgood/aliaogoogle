@@ -6,6 +6,7 @@
 //   startQuest: 開始一個任務（會停掉其他任務、切到人的視角）
 //   setView, fp: 教學時用來切視角、看玩家有沒有走動和轉頭
 import { play } from './sound.js';
+import { angleDiff } from './nav.js';
 
 const KEY = 'aliao-day';
 const load = () => { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch { return {}; } };
@@ -69,7 +70,7 @@ export function initFlow({ quests, startQuest, setView, fp }) {
   /* ----- 第一次進站：歡迎與教學 ----- */
   const TUTORIAL = [
     { text: '點一下地板，走過去看看', done: s => Math.hypot(fp.x - s.x, fp.z - s.z) > 0.6 },
-    { text: '按住畫面左右拖曳，環顧四周', done: s => Math.abs(Math.atan2(Math.sin(fp.yaw - s.yaw), Math.cos(fp.yaw - s.yaw))) > 0.8 },
+    { text: '按住畫面左右拖曳，環顧四周', done: s => Math.abs(angleDiff(s.yaw, fp.yaw)) > 0.8 },
     { text: '做任務時，黃色菱形就是要點的東西；畫面上方會寫目標，箭頭指出往哪走。右上角「任務清單」可以看全部任務。', button: '知道了' },
   ];
   let lesson = null;       // { i, x, z, yaw }：正在教第幾步、這一步開始時的位置與方向

@@ -119,6 +119,16 @@ export function play(name) {
   SOUNDS[name]();
 }
 
+// 點到任務目標時的音效（id 後面的編號不算：pad0、pad1 都是 pad）
+const TARGETS = {
+  leash: ['pick'], dog: ['clip', 'woof'], bag: ['pick'], door: ['door'], stack: ['pick'], toilet: ['flush'],
+  backdoor: ['door'], bowl: ['pick'], kibble: ['pour'], freeze: ['pour'], drawer: ['drawer'], litter: ['scoop'],
+  catfood: ['pick'], gate: ['gate'], pad: ['pick'], poop: ['pick'], spot: ['place'], catbowl: ['pour', 'meow'],
+};
+export function playTarget(id) {
+  for (const name of TARGETS[id.replace(/\d+$/, '')] || ['pick']) play(name);
+}
+
 export function buzz(pattern) {
   if (!muted && navigator.vibrate) navigator.vibrate(pattern);
 }

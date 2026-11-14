@@ -9,6 +9,7 @@
 //   canPlay:  現在能不能互動（沒被牽著、沒在吃飯、玩家不是用狗的視角）
 //   walkable: 檢查某個位置走不走得到（被踹退的時候用）
 import { play, buzz } from './sound.js';
+import { heading, turnAngle } from './nav.js';
 
 const ACTIONS = [
   { id: 'shake', label: '握手', say: '巴福柔坐下，把手伸給你。', time: 3.5 },
@@ -41,10 +42,8 @@ export function initPlay({ dog, fp, canPlay, walkable }) {
     } else acheIn = 90 + Math.random() * 110;
   }
 
-  const turnTo = (want, dt, rate = 8) => {
-    dog.rotation.y += Math.atan2(Math.sin(want - dog.rotation.y), Math.cos(want - dog.rotation.y)) * Math.min(1, dt * rate);
-  };
-  const toPlayer = () => Math.atan2(-(fp.x - dog.position.x), -(fp.z - dog.position.z));
+  const turnTo = (want, dt, rate = 8) => { dog.rotation.y = turnAngle(dog.rotation.y, want, dt * rate); };
+  const toPlayer = () => heading(fp.x - dog.position.x, fp.z - dog.position.z);
 
   // 朝人走近到剩 dist 公尺（前面被擋住就停）
   function approach(dist, dt) {

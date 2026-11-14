@@ -147,6 +147,17 @@ export function box(parent, w, h, d, mat, x, y, z) {
   return m;
 }
 
+// 看不見、只用來點的方塊：小東西不好點，或是要點的地方本身不是一個物件（大門、抽屜）。
+// id 是點到時的目標名稱（userData.interact）；放在別的物件裡面的話可以不給，點到時往上層找。
+export const invisible = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false });
+export function hitbox(parent, w, h, d, x = 0, y = 0, z = 0, id) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), invisible);
+  m.position.set(x, y, z);
+  if (id) m.userData.interact = id;
+  parent.add(m);
+  return m;
+}
+
 // 單面牆：只從室內看得到，俯瞰時不會擋住視線
 export function wall(parent, mat, cx, cy, cz, w, h, rotY) {
   const geo = new THREE.PlaneGeometry(w, h);

@@ -1,18 +1,10 @@
 import * as THREE from 'three';
-import { std, box, cyl, woodTexture } from './kit.js';
+import { std, box, cyl, woodTexture, hitbox } from './kit.js';
 import { ROOM } from './livingroom.js';
 import { CAT_SPOTS } from './kitchen.js';
 import { makeQuest } from './quest.js';
 
 // 支線任務：清理貓砂、餵貓。
-const invisible = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false });
-function hitbox(parent, w, h, d, x, y, z, id) {
-  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), invisible);
-  m.position.set(x, y, z);
-  m.userData.interact = id;
-  parent.add(m);
-  return m;
-}
 
 /* ---------- 支線任務一：清理貓砂 ---------- */
 // 藍色塑膠袋在松木層架左邊上面那個抽屜；貓砂盆在廚房南牆；挖完從廚房後門拿出去丟。
@@ -41,7 +33,7 @@ export function initLitter({ scene }) {
   world.add(clumps);
   const litterHit = hitbox(world, 0.7, 0.45, 0.5, lx, 0.22, lz, 'litter');
 
-  const quest = makeQuest({
+  return makeQuest({
     scene,
     def: { id: 'litter', title: '支線任務一：清理貓砂', steps: [
       { text: '從松木層架左邊的抽屜拿藍色塑膠袋' },
@@ -60,24 +52,17 @@ export function initLitter({ scene }) {
       if (id === 'drawer') drawerOpen = 1.2;
       if (id === 'litter') clumps.visible = false;
     },
+    // 抽屜拉出來、停一下、袋子被拿走、再推回去
+    onUpdate: dt => {
+      if (drawerOpen > 0) {
+        drawerOpen -= dt;
+        if (drawerOpen < 0.5) bag.visible = false;
+        if (drawerOpen <= 0) bag.visible = true;     // 抽屜裡還有別的袋子
+      }
+      const want = drawerOpen > 0 ? 0.22 : 0;
+      drawer.position.z += (front + want - drawer.position.z) * Math.min(1, dt * 10);
+    },
   });
-
-  // 抽屜拉出來、停一下、袋子被拿走、再推回去
-  let last = 0;
-  const baseUpdate = quest.update;
-  quest.update = time => {
-    const dt = Math.min(time - last, 0.05);
-    last = time;
-    baseUpdate(time);
-    if (drawerOpen > 0) {
-      drawerOpen -= dt;
-      if (drawerOpen < 0.5) bag.visible = false;
-      if (drawerOpen <= 0) bag.visible = true;     // 抽屜裡還有別的袋子
-    }
-    const want = drawerOpen > 0 ? 0.22 : 0;
-    drawer.position.z += (front + want - drawer.position.z) * Math.min(1, dt * 10);
-  };
-  return quest;
 }
 
 /* ---------- 支線任務二：餵貓 ---------- */

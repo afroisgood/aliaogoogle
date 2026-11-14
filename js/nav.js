@@ -1,6 +1,33 @@
-import { OBSTACLES, WALK } from './kit.js';
+import { OBSTACLES, WALK, ROOMS } from './kit.js';
 
-// 走路用的共用工具：人、巴福柔、貓都用同一套可走範圍與找路。
+// 走路用的共用工具：人、巴福柔、貓都用同一套可走範圍與找路、沿路走、轉身。
+// 角度一律是 rotation.y 的定義：0 朝 -z（北），正值往西轉。
+
+// (x, z) 在哪個房間（不在任何房間裡回傳空字串）
+export function roomAt(x, z) {
+  const hit = ROOMS.find(({ rect: [x1, x2, z1, z2] }) => x >= x1 && x <= x2 && z >= z1 && z <= z2);
+  return hit ? hit.name : '';
+}
+
+// 往 (dx, dz) 這個方向時的角度
+export const heading = (dx, dz) => Math.atan2(-dx, -dz);
+// 從角度 a 轉到 b 最近要轉多少（-π～π）
+export const angleDiff = (a, b) => Math.atan2(Math.sin(b - a), Math.cos(b - a));
+// 從 from 往 to 轉過去一部分（k：這一幀轉過去的比例，超過 1 當 1）
+export const turnAngle = (from, to, k) => from + angleDiff(from, to) * Math.min(1, k);
+
+// 沿著路線點往前走 step 公尺：直接改 pos 的 x、z，走過的點從 path 移除，回傳沒用完的距離。
+//   keep：最後留幾個點不走（牽繩跟在後面時用）
+//   onLeg(dx, dz, d)：每一段開始走之前呼叫，可以用來轉向
+export function advance(pos, path, step, { keep = 0, onLeg } = {}) {
+  while (path.length > keep && step > 0) {
+    const [tx, tz] = path[0], dx = tx - pos.x, dz = tz - pos.z, d = Math.hypot(dx, dz);
+    if (onLeg) onLeg(dx, dz, d);
+    if (d <= step) { pos.x = tx; pos.z = tz; step -= d; path.shift(); }
+    else { pos.x += dx / d * step; pos.z += dz / d * step; step = 0; }
+  }
+  return step;
+}
 
 export function walkable(x, z, r) {
   if (!WALK.some(([x1, x2, z1, z2]) => x >= x1 + r && x <= x2 - r && z >= z1 + r && z <= z2 - r)) return false;
