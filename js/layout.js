@@ -16,7 +16,8 @@ const TOUCH = 0.015;       // 兩件東西相距多近算碰在一起
 
 const hidden = m => m.material && m.material.opacity === 0;     // 看不見的點擊範圍，不算家具的外形
 
-function boundsOf(o) {
+// 物件看得見的外框（不含點擊範圍）；任務的黃色菱形也用它決定放多高
+export function boundsOf(o) {
   const box = new THREE.Box3(), part = new THREE.Box3();
   o.traverse(m => {
     if (!m.isMesh || hidden(m)) return;

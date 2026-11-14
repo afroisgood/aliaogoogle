@@ -5,6 +5,9 @@
 //   quests:     { walk, clean, feed, catFeed, litter }（任務物件，state.finished 是完成次數）
 //   startQuest: 開始一個任務（會停掉其他任務、切到人的視角）
 //   setView, fp: 教學時用來切視角、看玩家有沒有走動和轉頭
+import { play } from './sound.js';
+import { angleDiff } from './nav.js';
+
 const KEY = 'aliao-day';
 const load = () => { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch { return {}; } };
 
@@ -42,6 +45,7 @@ export function initFlow({ quests, startQuest, setView, fp }) {
   function next(prefix = '') {
     renderDayBtn();
     if (day.at >= DAY.length) {
+      if (prefix) play('dayDone');
       showCard(`${prefix}<h2>今天的照顧都完成了！</h2><p>巴福柔散過步、吃飽了，家裡也清乾淨了，兩隻貓也照顧好了。辛苦了！</p>`, [
         { label: '重新開始新的一天', go: () => { day.at = 0; save(); next(); } },
         { label: '自己逛逛', go: () => {} },
@@ -50,6 +54,7 @@ export function initFlow({ quests, startQuest, setView, fp }) {
     }
     const item = DAY[day.at], q = item.quest;
     if (item.event) {
+      play('meow');
       showCard(`${prefix}<p class="card-tag">突發事件</p><h2>${item.event}</h2><p>${q.def.title}</p>${steps(q)}`, [
         { label: '好，先去處理', go: () => startQuest(q) },
         { label: '之後再說', go: () => { day.at++; save(); next(); } },
@@ -65,7 +70,7 @@ export function initFlow({ quests, startQuest, setView, fp }) {
   /* ----- 第一次進站：歡迎與教學 ----- */
   const TUTORIAL = [
     { text: '點一下地板，走過去看看', done: s => Math.hypot(fp.x - s.x, fp.z - s.z) > 0.6 },
-    { text: '按住畫面左右拖曳，環顧四周', done: s => Math.abs(Math.atan2(Math.sin(fp.yaw - s.yaw), Math.cos(fp.yaw - s.yaw))) > 0.8 },
+    { text: '按住畫面左右拖曳，環顧四周', done: s => Math.abs(angleDiff(s.yaw, fp.yaw)) > 0.8 },
     { text: '做任務時，黃色菱形就是要點的東西；畫面上方會寫目標，箭頭指出往哪走。右上角「任務清單」可以看全部任務。', button: '知道了' },
   ];
   let lesson = null;       // { i, x, z, yaw }：正在教第幾步、這一步開始時的位置與方向
@@ -107,7 +112,8 @@ export function initFlow({ quests, startQuest, setView, fp }) {
       if (item && item.quest === q) {
         day.at++;
         save();
-        next(`<p class="card-done">✓ ${q.def.title}　完成！</p>`);
+        // 先讓完成的彩帶和巴福柔開心的樣子演一下，再跳出下一件事
+        setTimeout(() => next(`<p class="card-done">✓ ${q.def.title}　完成！</p>`), 1500);
       }
     }
   }

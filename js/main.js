@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { buildLivingRoom, ROOM } from './livingroom.js';
 import { animatePet } from './pets.js';
 import { STYLE, ROOMS, SPACE } from './kit.js';
-import { walkable, findPath } from './nav.js';
+import { walkable, findPath, roomAt, advance, heading, turnAngle } from './nav.js';
 import { initTasks } from './tasks.js';
 import { DOG_FACE } from './pixelart.js';
 import { initMission } from './mission.js';
@@ -16,70 +16,14 @@ import { initPlay } from './play.js';
 import { relayout } from './layout.js';
 import { openGallery } from './walk.js';
 import { initTV } from './tv.js';
+import { play as sound, playTarget, buzz, initSoundToggle } from './sound.js';
+import { initFeedback } from './feedback.js';
+import { createRenderer } from './post.js';
+import { initLeash } from './leash.js';
+import { initCompass } from './compass.js';
 
 const canvas = document.getElementById('scene');
-// 先算到一張貼圖，再用後製決定風格：低解析度放大、色階、網點、描邊、色調
-const FULL = !STYLE.h;                               // 全解析度風格
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: false });
-renderer.setPixelRatio(1);
-if (STYLE.shadows) {
-  renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = STYLE.pixel ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap;
-  renderer.shadowMap.autoUpdate = false;      // 場景是靜態的，陰影只算一次
-  renderer.shadowMap.needsUpdate = true;
-}
-if (FULL) canvas.style.imageRendering = 'auto';
-const filter = FULL ? THREE.LinearFilter : THREE.NearestFilter;
-const target = new THREE.WebGLRenderTarget(320, 240, { magFilter: filter, minFilter: filter, samples: FULL ? 4 : 0 });
-target.depthTexture = new THREE.DepthTexture(320, 240);
-const post = new THREE.ShaderMaterial({
-  uniforms: {
-    tex: { value: target.texture }, depthTex: { value: target.depthTexture },
-    texel: { value: new THREE.Vector2(1 / 320, 1 / 240) },
-    levels: { value: STYLE.levels }, dither: { value: STYLE.dither },
-    outline: { value: STYLE.outline || 0 }, tonemap: { value: STYLE.tonemap || 0 },
-  },
-  vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0., 1.); }',
-  fragmentShader: `
-    uniform sampler2D tex, depthTex; uniform vec2 texel;
-    uniform float levels, dither, outline, tonemap;
-    varying vec2 vUv;
-    float bayer(vec2 p){
-      int x = int(mod(p.x, 4.)), y = int(mod(p.y, 4.));
-      int i = x + y * 4;
-      float m[16];
-      m[0]=0.;m[1]=8.;m[2]=2.;m[3]=10.;m[4]=12.;m[5]=4.;m[6]=14.;m[7]=6.;
-      m[8]=3.;m[9]=11.;m[10]=1.;m[11]=9.;m[12]=15.;m[13]=7.;m[14]=13.;m[15]=5.;
-      for (int k = 0; k < 16; k++) if (k == i) return m[k] / 16. - .5;
-      return 0.;
-    }
-    // 深度轉成實際距離（公尺），near/far 與相機設定一致
-    float dist(vec2 uv){ float z = texture2D(depthTex, uv).x * 2. - 1.; return 2. * .04 * 60. / (60. + .04 - z * (60. - .04)); }
-    float lum(vec2 uv){ return dot(texture2D(tex, uv).rgb, vec3(.3, .59, .11)); }
-    void main(){
-      vec3 c = texture2D(tex, vUv).rgb;
-      if (tonemap > .5) {                      // 柔和的底片色調、微暖
-        c *= vec3(1.04, 1., .93) * .82;
-        c = (c * (2.51 * c + .03)) / (c * (2.43 * c + .59) + .14);
-      }
-      c = pow(clamp(c, 0., 1.), vec3(1. / 2.2));
-      if (outline > .5) {                      // 墨線：深度或明暗突然改變的地方
-        vec2 t = texel * 1.3;
-        float d = dist(vUv);
-        float dd = abs(dist(vUv + vec2(t.x, 0.)) + dist(vUv - vec2(t.x, 0.)) - 2. * d)
-                 + abs(dist(vUv + vec2(0., t.y)) + dist(vUv - vec2(0., t.y)) - 2. * d);
-        float dl = abs(lum(vUv + vec2(t.x, 0.)) - lum(vUv - vec2(t.x, 0.))) + abs(lum(vUv + vec2(0., t.y)) - lum(vUv - vec2(0., t.y)));
-        float e = max(smoothstep(.015, .05, dd / d), smoothstep(.12, .3, dl) * .8);
-        c = mix(c, vec3(.16, .11, .09), e);
-      }
-      if (levels > .5) c = floor(c * levels + .5 + bayer(gl_FragCoord.xy) * .9 * dither) / levels;
-      if (tonemap > .5) { vec2 v = vUv - .5; c *= 1. - dot(v, v) * .35; }   // 四角微暗
-      gl_FragColor = vec4(c, 1.);
-    }`,
-});
-const postScene = new THREE.Scene();
-const postCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
-postScene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), post));
+const { renderer, resize: resizeRenderer, render } = createRenderer(canvas);
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x000000);
@@ -88,19 +32,19 @@ const camera = new THREE.PerspectiveCamera(70, 1, 0.04, 60);
 camera.rotation.order = 'YXZ';
 
 const { dog, cat, kitten, southDoors } = buildLivingRoom(scene);
-const mission = initMission({ scene, dog, onChange: () => missionChanged() });   // 任務一：帶狗出門
-const clean = initClean({ scene });                                                  // 任務二：清潔時間
-clean.onChange = () => missionChanged();
-const feed = initFeed({ scene, dog });                                               // 任務三：餵狗
-feed.onChange = () => missionChanged();
+const mission = initMission({ scene, dog });       // 任務一：帶狗出門
+const clean = initClean({ scene });               // 任務二：清潔時間
+const feed = initFeed({ scene, dog });            // 任務三：餵狗
 const missions = [mission, clean, feed];
-// 支線任務
-const litter = initLitter({ scene });
-const catFeed = initCatFeed({ scene });
+const litter = initLitter({ scene });             // 支線任務一：清理貓砂
+const catFeed = initCatFeed({ scene });           // 支線任務二：餵貓
 const sides = [litter, catFeed];
-for (const m of sides) m.onChange = () => missionChanged();
+const quests = [...missions, ...sides];
+for (const m of quests) m.onChange = () => missionChanged();
 let renderTasks = () => {}, flow = null;
+const feedback = initFeedback({ quests, dog });   // 步驟完成的提示音、任務完成的彩帶
 function missionChanged() {
+  feedback.changed();
   renderTasks();
   if (flow) flow.check();
   renderer.shadowMap.needsUpdate = true;     // 任務物件出現或消失，陰影要重算
@@ -112,10 +56,11 @@ relayout(scene);
 // 廚房柵欄：平常關著，點一下開關；開著離開廚房會跳出警示
 const alertBox = document.getElementById('alert');
 const gate = initGate({ scene, onChange: () => {
+  if (gate.state.warning && alertBox.hidden) { sound('alarm'); buzz([100, 80, 100]); }
   alertBox.hidden = !gate.state.warning;
   wander.replan();
 } });
-const clickables = [...missions, ...sides, gate];
+const clickables = [...quests, gate];
 
 // 巴福柔和兩隻貓在屋裡到處走。巴福柔被牽著、自己去吃飯、或等著被繫牽繩的時候不亂走；
 // 用牠們的視角時，那隻本身也不動
@@ -132,7 +77,7 @@ const HD = ROOM.D / 2 * SPACE;         // 客廳南牆（大門）實際的 z
 // yaw = 0 朝北（屋內深處），正值往西轉
 const VIEWS = {
   overview: { hint: '拖曳旋轉・滾輪或雙指縮放' },
-  human: { eye: 1.6, speed: 2.2, radius: 0.18, start: [1.7, 1.5], yaw: 0.72, pitch: -0.12, fov: 75,
+  human: { eye: 1.6, speed: 2.2, radius: 0.18, start: [1.7, 1.5], yaw: 0.35, pitch: -0.1, fov: 75,
     hint: '人的視角（從大門進來）・點一下地板走過去・拖曳環顧' },
   dog: { eye: 0.62, speed: 3.0, radius: 0.2, start: [1.72, -0.55], yaw: Math.PI * 0.8, pitch: 0.12, fov: 80,
     hint: '巴福柔的視角・點一下地板走過去・拖曳環顧' },
@@ -199,11 +144,7 @@ function goRoom(i) {
 roomChip.addEventListener('click', () => goRoom(focus + 1));
 document.getElementById('gallery-btn').addEventListener('click', openGallery);   // 隨時看散步指引圖集
 
-function currentRoomName() {
-  if (mode === 'overview') return stops[focus].name;
-  const hit = ROOMS.find(({ rect: [x1, x2, z1, z2] }) => fp.x >= x1 && fp.x <= x2 && fp.z >= z1 && fp.z <= z2);
-  return hit ? hit.name : '';
-}
+const currentRoomName = () => (mode === 'overview' ? stops[focus].name : roomAt(fp.x, fp.z));
 
 /* ---------- 拖曳環顧 / 縮放 ---------- */
 
@@ -305,26 +246,20 @@ function tryInteract() {
   const { m, id } = pending;
   pending = null;
   stopWalk();
+  if (m.wants(id)) { if (m === play) sound('woof'); else playTarget(id); }
   m.trigger(id);
   return true;
 }
 
 function followPath(dt) {
   const v = VIEWS[mode];
-  let step = v.speed * play.speed() * dt;
-  while (path.length && step > 0) {
-    const [tx, tz] = path[0], d = Math.hypot(tx - fp.x, tz - fp.z);
-    if (d <= step) { fp.x = tx; fp.z = tz; step -= d; path.shift(); }
-    else { fp.x += (tx - fp.x) / d * step; fp.z += (tz - fp.z) / d * step; step = 0; }
-  }
+  advance(fp, path, v.speed * play.speed() * dt);
   if (pending && tryInteract()) return;
   if (!path.length) { stopWalk(); pending = null; return; }
   // 邊走邊把視線轉向前進方向
   const [lx, lz] = path[Math.min(6, path.length - 1)];
   if (Math.hypot(lx - fp.x, lz - fp.z) > 0.35 && !pointers.size) {
-    const want = Math.atan2(-(lx - fp.x), -(lz - fp.z));
-    const diff = Math.atan2(Math.sin(want - fp.yaw), Math.cos(want - fp.yaw));
-    fp.yaw += diff * Math.min(1, dt * 4);
+    fp.yaw = turnAngle(fp.yaw, heading(lx - fp.x, lz - fp.z), dt * 4);
     fp.pitch += (0 - fp.pitch) * Math.min(1, dt * 2);
   }
   marker.rotation.z += dt * 3;
@@ -349,97 +284,15 @@ function move(dt) {
   if (walkable(fp.x, fp.z + dz, v.radius)) fp.z += dz;
 }
 
-/* ---------- 牽繩：巴福柔保持一段距離跟著走 ---------- */
+/* ---------- 牽繩與目標方向箭頭 ---------- */
 
-const LEASH = 1.5;                        // 超過這個距離牠才跟上來（公尺）
-const leashLine = new THREE.Line(
-  new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]),
-  new THREE.LineBasicMaterial({ color: 0xd8452c }));
-leashLine.frustumCulled = false;
-leashLine.visible = false;
-leashLine.raycast = () => {};
-scene.add(leashLine);
-
-// 巴福柔沿著人走過的足跡跟上（足跡都是走得到的地方，所以不會穿過家具或牆）
-const trail = [];
-function followLeash(dt, time) {
-  const on = mission.state.leashed && mode !== 'dog';
-  leashLine.visible = on;
-  if (!on) { trail.length = 0; return; }   // 沒牽著：巴福柔自己到處走（wander.js）
-  const dp = dog.position;
-  if (!trail.length) trail.push(...findPath(dp.x, dp.z, fp.x, fp.z, 0.2));   // 剛繫上：先找一條走到人身邊的路
-  const end = trail[trail.length - 1];
-  if (!end || Math.hypot(fp.x - end[0], fp.z - end[1]) > 0.1) trail.push([fp.x, fp.z]);
-  // 從巴福柔沿著足跡到人的距離
-  let len = 0, px = dp.x, pz = dp.z;
-  for (const [x, z] of trail) { len += Math.hypot(x - px, z - pz); px = x; pz = z; }
-  let moving = false;
-  if (len > LEASH) {
-    let step = Math.min(len - LEASH, (len > LEASH + 1 ? 4 : 2.2) * dt);
-    moving = step > 0.001;
-    while (trail.length > 1 && step > 0) {
-      const [tx, tz] = trail[0], dx = tx - dp.x, dz = tz - dp.z, d = Math.hypot(dx, dz);
-      if (d > 0.02) {
-        const want = Math.atan2(-dx, -dz);
-        dog.rotation.y += Math.atan2(Math.sin(want - dog.rotation.y), Math.cos(want - dog.rotation.y)) * Math.min(1, dt * 8);
-      }
-      if (d <= step) { dp.x = tx; dp.z = tz; step -= d; trail.shift(); }
-      else { dp.x += dx / d * step; dp.z += dz / d * step; step = 0; }
-    }
-  }
-  const dx = fp.x - dp.x, dz = fp.z - dp.z;
-  if (!moving && Math.hypot(dx, dz) > 0.3) {     // 停下來時臉朝著人
-    const want = Math.atan2(-dx, -dz);
-    dog.rotation.y += Math.atan2(Math.sin(want - dog.rotation.y), Math.cos(want - dog.rotation.y)) * Math.min(1, dt * 6);
-  }
-  // 牽繩：從手邊拉到巴福柔的脖子
-  const p = leashLine.geometry.attributes.position;
-  p.setXYZ(0, fp.x + Math.cos(fp.yaw) * 0.25, VIEWS[mode].eye - 0.55, fp.z - Math.sin(fp.yaw) * 0.25);
-  p.setXYZ(1, dp.x - Math.sin(dog.rotation.y) * 0.22, 0.66, dp.z - Math.cos(dog.rotation.y) * 0.22);
-  p.needsUpdate = true;
-}
-
-/* ---------- 目標方向箭頭：沿著走得到的路指出下一步往哪走 ---------- */
-
-const compass = document.getElementById('compass');
-const compassArrow = document.getElementById('compass-arrow');
-const compassText = document.getElementById('compass-text');
-const roomAt = (x, z) => (ROOMS.find(({ rect: [x1, x2, z1, z2] }) => x >= x1 && x <= x2 && z >= z1 && z <= z2) || {}).name || '';
-let guide = null, guideAt = -1;     // guide：路線上前方約 1.2m 的點；每 0.4 秒重算一次
-
-function updateCompass(time) {
-  const active = [...missions, ...sides].find(m => m.state.active);
-  const pts = active && mode !== 'overview' ? active.pointers.filter(p => p.visible) : [];
-  if (!pts.length) { compass.hidden = true; guide = null; guideAt = -1; return; }
-  const t = pts.reduce((a, b) => (Math.hypot(a.position.x - fp.x, a.position.z - fp.z) <= Math.hypot(b.position.x - fp.x, b.position.z - fp.z) ? a : b)).position;
-  const dist = Math.hypot(t.x - fp.x, t.z - fp.z);
-  const there = roomAt(t.x, t.z), here = currentRoomName();
-  if (!guide || time - guideAt > 0.4) {
-    guideAt = time;
-    const route = findPath(fp.x, fp.z, t.x, t.z, VIEWS[mode].radius);
-    let left = 1.2, px = fp.x, pz = fp.z;
-    guide = [t.x, t.z];
-    for (const [x, z] of route) { left -= Math.hypot(x - px, z - pz); px = x; pz = z; if (left <= 0) { guide = [x, z]; break; } }
-  }
-  const dx = guide[0] - fp.x, dz = guide[1] - fp.z;
-  const fwd = -Math.sin(fp.yaw) * dx - Math.cos(fp.yaw) * dz, right = Math.cos(fp.yaw) * dx - Math.sin(fp.yaw) * dz;
-  compassArrow.style.transform = `rotate(${Math.atan2(right, fwd)}rad)`;
-  compassText.textContent = there && there !== here ? `目標在${there}` : dist < 1.7 ? '就在附近' : `目標在 ${dist.toFixed(1)} 公尺外`;
-  compass.hidden = false;
-}
+const updateLeash = initLeash({ scene, dog, fp,
+  on: () => mission.state.leashed && mode !== 'dog', handY: () => VIEWS[mode].eye - 0.55 });
+const updateCompass = initCompass({ quests, fp, radius: () => (mode === 'overview' ? null : VIEWS[mode].radius) });
 
 /* ---------- 主迴圈 ---------- */
 
-function resize() {
-  const w = canvas.clientWidth, h = canvas.clientHeight;
-  const rh = FULL ? Math.round(h * Math.min(devicePixelRatio, 2)) : STYLE.h;
-  const rw = Math.max(160, Math.round(rh * w / h));
-  renderer.setSize(rw, rh, false);
-  target.setSize(rw, rh);
-  post.uniforms.texel.value.set(1 / rw, 1 / rh);
-  camera.aspect = w / h;
-  camera.updateProjectionMatrix();
-}
+const resize = () => resizeRenderer(camera);
 addEventListener('resize', resize);
 resize();
 
@@ -460,13 +313,13 @@ function frame() {
     southDoors.visible = focus !== 0 || camera.position.z < HD;
   } else {
     if (play.state.still) { stopWalk(); pending = null; } else move(dt);   // 巴福柔幫忙點穴時站著不動
-    followLeash(dt, clock.elapsedTime);
+    updateLeash(dt);
     southDoors.visible = true;
     play.update(dt, clock.elapsedTime);
     const riding = play.state.riding;
     if (riding) {                           // 騎在巴福柔背上：牠跟著人的位置和方向走，視線降到牠背上的高度
       dog.position.set(fp.x, 0, fp.z);
-      dog.rotation.y += Math.atan2(Math.sin(fp.yaw - dog.rotation.y), Math.cos(fp.yaw - dog.rotation.y)) * Math.min(1, dt * 6);
+      dog.rotation.y = turnAngle(dog.rotation.y, fp.yaw, dt * 6);
     }
     const jolt = play.state.shake;          // 被踹的時候鏡頭晃一下
     camera.position.set(fp.x + (riding ? Math.sin(fp.yaw) * 0.12 : 0),
@@ -479,7 +332,7 @@ function frame() {
     const i = stops.findIndex(r => r.name === label);
     if (i >= 0 && i !== focus) { focus = i; orbit.target.set(...stops[i].center); orbit.r = stops[i].r; }
   }
-  for (const m of [...missions, ...sides]) m.update(clock.elapsedTime);
+  for (const m of quests) m.update(clock.elapsedTime);
   flow.update();
   tv.update(dt);
   stunBox.classList.toggle('on', play.state.still);        // 被按摩時畫面泛一層暖色
@@ -492,10 +345,7 @@ function frame() {
     if (lastRoom === '廚房' && label !== '廚房') gate.leftKitchen();
     lastRoom = label;
   }
-  renderer.setRenderTarget(target);
-  renderer.render(scene, camera);
-  renderer.setRenderTarget(null);
-  renderer.render(postScene, postCam);
+  render(scene, camera);
   requestAnimationFrame(frame);
 }
 
@@ -505,13 +355,14 @@ portrait.getContext('2d').drawImage(DOG_FACE, 0, 0);
 
 // 開始一個任務：同時只做一個；從俯瞰開始的話直接切到人的視角
 function startQuest(m) {
-  for (const o of [...missions, ...sides]) if (o !== m) o.stop();
+  for (const o of quests) if (o !== m) o.stop();
   m.start();
   if (mode === 'overview') setView('human');
 }
 renderTasks = initTasks(missions, sides, startQuest);
 flow = initFlow({ quests: { walk: mission, clean, feed, catFeed, litter }, startQuest, setView, fp });
-setView('overview');
+initSoundToggle(document.getElementById('sound-btn'));
+setView('human');      // 一打開就是人的視角，從大門進來
 frame();
 
 // 方便除錯與之後擴充

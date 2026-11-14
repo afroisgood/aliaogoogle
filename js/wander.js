@@ -1,4 +1,4 @@
-import { walkable, findPath, randomSpot } from './nav.js';
+import { walkable, findPath, randomSpot, advance, heading, angleDiff } from './nav.js';
 
 // 寵物在整個屋子裡隨機走動：發呆幾秒 → 隨機挑一個走得到的地方 → 找路走過去 → 再發呆。
 // 每隻寵物：{ obj, r（身體半寬）, front（位置點到鼻子的距離）, speed, rest: [最短, 最長] 秒,
@@ -46,8 +46,7 @@ export function initWander(pets, player) {
       const hx = lx - o.position.x, hz = lz - o.position.z;
       let off = 0;
       if (Math.hypot(hx, hz) > 0.02) {
-        const want = Math.atan2(-hx, -hz);
-        off = Math.atan2(Math.sin(want - o.rotation.y), Math.cos(want - o.rotation.y));
+        off = angleDiff(o.rotation.y, heading(hx, hz));
         o.rotation.y += Math.sign(off) * Math.min(Math.abs(off), p.turn * dt);
       }
       // 起步、停下都是慢慢加速減速；快到終點、或還在轉彎時放慢
@@ -55,13 +54,9 @@ export function initWander(pets, player) {
       const target = p.speed * slow * (p.path.length < 4 ? 0.5 : 1);
       p.v += Math.sign(target - p.v) * Math.min(Math.abs(target - p.v), p.speed * 2.5 * dt);
       // 這一步要走到哪
-      let step = p.v * dt, nx = o.position.x, nz = o.position.z;
-      const path = [...p.path];
-      while (path.length && step > 0) {
-        const [tx, tz] = path[0], dx = tx - nx, dz = tz - nz, d = Math.hypot(dx, dz);
-        if (d <= step) { nx = tx; nz = tz; step -= d; path.shift(); }
-        else { nx += dx / d * step; nz += dz / d * step; step = 0; }
-      }
+      const next = { x: o.position.x, z: o.position.z }, path = [...p.path];
+      advance(next, path, p.v * dt);
+      const { x: nx, z: nz } = next;
       const mx = nx - o.position.x, mz = nz - o.position.z, m = Math.hypot(mx, mz);
       // 鼻子前方碰到牆或家具：停在這裡
       const nose = m > 1e-4 && !walkable(nx + mx / m * p.front, nz + mz / m * p.front, 0.03);

@@ -137,6 +137,18 @@ export function animatePet(o, dt, time) {
     a.tail.rotation.z = Math.sin(t * (moving ? 7 : 9)) * (moving ? 0.2 : 0.45);
     a.tail.rotation.x = 0.6 + Math.sin(a.phase) * 0.08 * m;
 
+    // 任務完成時開心（feedback.js 設定 o.userData.cheer 秒數）：原地跳一跳、抬頭、尾巴猛搖
+    if (o.userData.cheer > 0) o.userData.cheer -= dt;
+    a.cheer = lerp(a.cheer || 0, o.userData.cheer > 0 ? 1 : 0, Math.min(1, dt * 8));
+    if (a.cheer > 0.01) {
+      const c = a.cheer, hop = Math.abs(Math.sin(time * 8));
+      bodyY += hop * 0.14 * c;
+      bodyX += hop * 0.18 * c;
+      for (const leg of a.legs.slice(0, 2)) leg.rotation.x = lerp(leg.rotation.x, -0.6 * hop, c);
+      headX = lerp(headX, 0.3, c);
+      a.tail.rotation.z = lerp(a.tail.rotation.z, Math.sin(time * 26) * 0.75, c);
+    }
+
     // 互動的姿勢（play.js 設定 o.userData.pose）：握手、趴下、踹人、點穴
     const k = a.poses || (a.poses = { shake: 0, down: 0, kick: 0, poke: 0, rear: 0 });
     for (const name in k) k[name] = lerp(k[name], o.userData.pose === name ? 1 : 0, Math.min(1, dt * (name === 'kick' || name === 'poke' ? 14 : 6)));

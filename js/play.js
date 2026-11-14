@@ -8,6 +8,9 @@
 //   fp:       玩家的位置與方向
 //   canPlay:  現在能不能互動（沒被牽著、沒在吃飯、玩家不是用狗的視角）
 //   walkable: 檢查某個位置走不走得到（被踹退的時候用）
+import { play, buzz } from './sound.js';
+import { heading, turnAngle } from './nav.js';
+
 const ACTIONS = [
   { id: 'shake', label: '握手', say: '巴福柔坐下，把手伸給你。', time: 3.5 },
   { id: 'down', label: '趴下', say: '巴福柔乖乖趴下。', time: 5 },
@@ -34,13 +37,13 @@ export function initPlay({ dog, fp, canPlay, walkable }) {
       acheBox.innerHTML = `<b>${name}</b><small>走路變慢・找巴福柔點穴</small>`;
       acheBox.classList.remove('new'); void acheBox.offsetWidth; acheBox.classList.add('new');
       state.shake = Math.max(state.shake, 0.5);
+      play('ouch');
+      buzz([80, 60, 80]);
     } else acheIn = 90 + Math.random() * 110;
   }
 
-  const turnTo = (want, dt, rate = 8) => {
-    dog.rotation.y += Math.atan2(Math.sin(want - dog.rotation.y), Math.cos(want - dog.rotation.y)) * Math.min(1, dt * rate);
-  };
-  const toPlayer = () => Math.atan2(-(fp.x - dog.position.x), -(fp.z - dog.position.z));
+  const turnTo = (want, dt, rate = 8) => { dog.rotation.y = turnAngle(dog.rotation.y, want, dt * rate); };
+  const toPlayer = () => heading(fp.x - dog.position.x, fp.z - dog.position.z);
 
   // 朝人走近到剩 dist 公尺（前面被擋住就停）
   function approach(dist, dt) {
@@ -80,6 +83,7 @@ export function initPlay({ dog, fp, canPlay, walkable }) {
         const nx = fp.x + cos * side - sin * fwd, nz = fp.z - sin * side - cos * fwd;
         if (walkable(nx, nz, 0.18)) { fp.x = nx; fp.z = nz; break; }
       }
+      play('place');
       render('你從巴福柔背上下來了。');
       return;
     }
@@ -89,9 +93,11 @@ export function initPlay({ dog, fp, canPlay, walkable }) {
       state.riding = true;
       fp.x = dog.position.x; fp.z = dog.position.z;
       fp.yaw = dog.rotation.y; fp.pitch = -0.25;
+      play('woof2');
       return render(a.say);
     }
-    Object.assign(state, { act: id, t: 0, hit: false, from: null });
+    Object.assign(state, { act: id, t: 0, hit: false, from: null, pressed: false });
+    if (id === 'shake') play('woof');
     render(a.say);
   }
 
@@ -100,7 +106,7 @@ export function initPlay({ dog, fp, canPlay, walkable }) {
     if (state.hold > 0) state.hold -= dt;
     // 身體狀況：隨機出現；有狀況時每隔幾秒抽痛一下（騎在狗背上不會痛）
     if (!state.ache) { if ((acheIn -= dt) <= 0) setAche(ACHES[Math.floor(Math.random() * ACHES.length)]); }
-    else if (!state.riding && !state.act && (twinge -= dt) <= 0) { twinge = 5 + Math.random() * 6; state.shake = Math.max(state.shake, 0.3); }
+    else if (!state.riding && !state.act && (twinge -= dt) <= 0) { twinge = 5 + Math.random() * 6; state.shake = Math.max(state.shake, 0.3); buzz(40); }
     if (!state.open) return;
     if (!canPlay()) return close();
     if (state.riding) return;                  // 騎著的時候位置由 main.js 帶著走
@@ -120,7 +126,7 @@ export function initPlay({ dog, fp, canPlay, walkable }) {
       if (t < 0.5) approach(1.0, dt);
       const u = (t - 0.5) / 0.55;                        // 跳躍進度 0～1
       if (u > 0 && u < 1) {
-        if (!state.from) state.from = [dog.position.x, dog.position.z];
+        if (!state.from) { state.from = [dog.position.x, dog.position.z]; play('whoosh'); }
         const dx = fp.x - state.from[0], dz = fp.z - state.from[1], d = Math.hypot(dx, dz) || 1;
         const reach = Math.max(0, Math.min(0.45, d - 0.55)) * Math.sin(Math.PI * u);
         dog.position.set(state.from[0] + dx / d * reach, Math.sin(Math.PI * u) * 0.45, state.from[1] + dz / d * reach);
@@ -132,6 +138,8 @@ export function initPlay({ dog, fp, canPlay, walkable }) {
       if (u > 0.5 && !state.hit) {
         state.hit = true;
         state.shake = 1;
+        play('hit');
+        buzz(160);
         flash.classList.remove('on'); void flash.offsetWidth; flash.classList.add('on');
         const dx = fp.x - dog.position.x, dz = fp.z - dog.position.z, d = Math.hypot(dx, dz) || 1;
         for (let push = 0.8; push > 0.05; push -= 0.1) {      // 往後退，退不了那麼多就少退一點
@@ -147,11 +155,14 @@ export function initPlay({ dog, fp, canPlay, walkable }) {
       state.still = t > 0.9 && t < 3.5;                  // 按的時候人站著不動
       const press = t > 0.9 && t < 3.3 && Math.floor((t - 0.9) / 0.3) % 2 === 0;
       dog.userData.pose = press ? 'poke' : t > 0.9 && t < 3.3 ? 'rear' : null;
+      if (press && !state.pressed) { play('press'); buzz(25); }
+      state.pressed = press;
       if (t > 0.9 && !state.hit) { state.hit = true; render('巴福柔用前腳幫你點穴……按、按、按……'); }
       if (t > 3.3 && state.hit !== 'done') {
         state.hit = 'done';
         const was = state.ache;
         setAche(null);
+        play('relief');
         render(was ? `好舒服！「${was}」緩解了，走路恢復正常。` : '你現在沒有哪裡痛，不過被按一按還是很舒服。');
       }
     }
