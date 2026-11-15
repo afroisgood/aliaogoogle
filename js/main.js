@@ -23,7 +23,6 @@ import { initLeash } from './leash.js';
 import { initCompass } from './compass.js';
 import { initBackdrop } from './backdrop.js';
 import { buildDecor, initLife } from './life.js';
-import { buildClosedRooms } from './closedrooms.js';
 
 const canvas = document.getElementById('scene');
 const { renderer, resize: resizeRenderer, render } = createRenderer(canvas);
@@ -53,7 +52,6 @@ function missionChanged() {
 
 // 房間和任務物件都建好了：把屋子換算成實際大小（房間放大、家具維持原尺寸）
 buildDecor(scene.getObjectByName('world'));        // 踢腳板、照片牆、時鐘
-buildClosedRooms(scene.getObjectByName('world'));  // 還沒開放的書房、主臥室（蓋著屋頂）
 relayout(scene);
 const updateLife = initLife(scene);               // 陽光與灰塵、立扇、時鐘走動
 const setBackdrop = initBackdrop(scene);         // 俯瞰的背景與地面、第一人稱的暖色霧
