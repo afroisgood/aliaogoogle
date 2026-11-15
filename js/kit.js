@@ -5,7 +5,7 @@ import * as THREE from 'three';
 // 畫面風格。預設為 pixel（精緻像素）；網址加上 ?style=retro / toon / soft 可切換成其他風格
 const STYLES = {
   // 最初的復古 FPS 風格：低解析度加網點
-  retro: { h: 240, levels: 7, dither: 1, pixel: true, fog: [2.5, 13], ambient: 2.1, spot: 1.6 },
+  retro: { h: 240, levels: 7, dither: 1, pixel: true, fog: [2.5, 13], fogColor: '#000000', ambient: 2.1, spot: 1.6 },
   // 「精緻像素」：解析度加倍、不用網點，保留點陣貼圖，加上陰影
   pixel: { h: 480, levels: 24, dither: 0, pixel: true, shadows: true, fog: [5, 26], ambient: 1.35, spot: 3.2 },
   // 「卡通描邊」：全解析度、色塊上色加墨線

@@ -40,10 +40,11 @@ export function initTV({ scene, fp, active }) {
       g.drawImage(im, (W - w) / 2, (H - h) / 2, w, h);
     } else im.onload = paint;
     g.fillStyle = 'rgba(0,0,0,.55)';                // 左上角的台標
-    g.fillRect(8, 8, 46, 26);
+    g.fillRect(8, 8, 40, 34);
     g.fillStyle = '#fff';
-    g.font = 'bold 18px sans-serif';
-    g.fillText(SHOW, 21, 28);
+    g.font = '24px "Cubic 11", sans-serif';       // 和畫面上的文字同一套像素字體
+    g.textBaseline = 'middle';
+    g.fillText(SHOW, 16, 26);
     tex.needsUpdate = true;
     if (state.fullscreen) renderFull();
   }

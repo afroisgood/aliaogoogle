@@ -1,12 +1,20 @@
 * { box-sizing: border-box; }
 
+/* 像素字體：俐方體11號（Cubic 11，SIL OFL 1.1 授權，見 assets/fonts/OFL.txt）。
+   只有一種粗細，所以全站不用粗體（瀏覽器硬加粗會把像素糊掉）。 */
+@font-face {
+  font-family: "Cubic 11";
+  src: url("../assets/fonts/Cubic_11.woff2") format("woff2");
+  font-display: swap;
+}
+
 :root {
   --hud-h: 76px;
   --metal: #55504a;
   --metal-hi: #8b857c;
   --metal-lo: #1d1b19;
   --red: #d8281c;
-  --font: "Courier New", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", monospace;
+  --font: "Cubic 11", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
 }
 
 html, body {
@@ -16,7 +24,9 @@ html, body {
   background: #000;
   color: #e8e0d0;
   font-family: var(--font);
-  font-weight: 700;
+  font-weight: 400;
+  font-synthesis: none;
+  -webkit-font-smoothing: none;
   -webkit-user-select: none;
   user-select: none;
   touch-action: none;
@@ -153,6 +163,7 @@ button:active, button.active, button[aria-expanded="true"] {
 .task-list li.empty { opacity: .6; font-size: 13px; }
 
 [hidden] { display: none !important; }
+h1, h2, b, strong { font-weight: 400; }
 
 /* ----- 任務 ----- */
 #goal {
