@@ -21,13 +21,12 @@ import { initFeedback } from './feedback.js';
 import { createRenderer } from './post.js';
 import { initLeash } from './leash.js';
 import { initCompass } from './compass.js';
+import { initBackdrop } from './backdrop.js';
 
 const canvas = document.getElementById('scene');
 const { renderer, resize: resizeRenderer, render } = createRenderer(canvas);
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x000000);
-const fog = STYLE.fog ? new THREE.Fog(0x000000, ...STYLE.fog.map(d => d * SPACE)) : null;   // 遠處變暗
 const camera = new THREE.PerspectiveCamera(70, 1, 0.04, 60);
 camera.rotation.order = 'YXZ';
 
@@ -52,6 +51,7 @@ function missionChanged() {
 
 // 房間和任務物件都建好了：把屋子換算成實際大小（房間放大、家具維持原尺寸）
 relayout(scene);
+const setBackdrop = initBackdrop(scene);         // 俯瞰的背景與地面、第一人稱的暖色霧
 
 // 廚房柵欄：平常關著，點一下開關；開著離開廚房會跳出警示
 const alertBox = document.getElementById('alert');
@@ -106,7 +106,7 @@ function setView(name) {
   document.querySelectorAll('#views button').forEach(b => b.classList.toggle('active', b.dataset.view === name));
   hint.textContent = v.hint;
   stopWalk();
-  scene.fog = name === 'overview' ? null : fog;
+  setBackdrop(name);
   dog.visible = name !== 'dog';
   cat.visible = name !== 'cat';
   if (name === 'overview') {
