@@ -22,6 +22,7 @@ import { createRenderer } from './post.js';
 import { initLeash } from './leash.js';
 import { initCompass } from './compass.js';
 import { initBackdrop } from './backdrop.js';
+import { buildDecor, initLife } from './life.js';
 
 const canvas = document.getElementById('scene');
 const { renderer, resize: resizeRenderer, render } = createRenderer(canvas);
@@ -50,7 +51,9 @@ function missionChanged() {
 }
 
 // 房間和任務物件都建好了：把屋子換算成實際大小（房間放大、家具維持原尺寸）
+buildDecor(scene.getObjectByName('world'));        // 踢腳板、照片牆、時鐘
 relayout(scene);
+const updateLife = initLife(scene);               // 陽光與灰塵、立扇、時鐘走動
 const setBackdrop = initBackdrop(scene);         // 俯瞰的背景與地面、第一人稱的暖色霧
 
 // 廚房柵欄：平常關著，點一下開關；開著離開廚房會跳出警示
@@ -65,10 +68,10 @@ const clickables = [...quests, gate];
 // 巴福柔和兩隻貓在屋裡到處走。巴福柔被牽著、自己去吃飯、或等著被繫牽繩的時候不亂走；
 // 用牠們的視角時，那隻本身也不動
 const wander = initWander([
-  { obj: dog, r: 0.25, front: 0.55, speed: 1.0, rest: [3, 9],
+  { obj: dog, r: 0.25, front: 0.55, speed: 1.0, rest: [3, 9], nap: { chance: 0.3, time: [15, 35] },
     free: () => mode !== 'dog' && !mission.state.leashed && !feed.owns() && !mission.wants('dog') && !play.busy() },
-  { obj: cat, r: 0.12, front: 0.28, speed: 0.75, rest: [4, 14], free: () => mode !== 'cat' },
-  { obj: kitten, r: 0.1, front: 0.22, speed: 0.9, rest: [2, 8], free: () => true },
+  { obj: cat, r: 0.12, front: 0.28, speed: 0.75, rest: [4, 14], nap: { chance: 0.35, time: [20, 45] }, free: () => mode !== 'cat' },
+  { obj: kitten, r: 0.1, front: 0.22, speed: 0.9, rest: [2, 8], nap: { chance: 0.2, time: [15, 30] }, free: () => true },
 ], () => (mode === 'overview' ? null : { x: fp.x, z: fp.z, r: VIEWS[mode].radius + 0.1 }));
 
 /* ---------- 視角 ---------- */
@@ -338,6 +341,7 @@ function frame() {
   stunBox.classList.toggle('on', play.state.still);        // 被按摩時畫面泛一層暖色
   updateCompass(clock.elapsedTime);
   wander.update(dt, clock.elapsedTime);
+  updateLife(dt, clock.elapsedTime);
   for (const o of [dog, cat, kitten]) animatePet(o, dt, clock.elapsedTime);    // 走路、搖尾巴、趴下等動作
   if (gate.update(dt)) renderer.shadowMap.needsUpdate = true;   // 柵欄轉動中，陰影跟著重算
   // 從廚房走到別的房間時，柵欄還開著就警示

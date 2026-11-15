@@ -69,8 +69,9 @@ function buildSouthDoors(room, wallMat) {
   g.userData.structural = true;          // 整面落地門是房間結構
   room.add(g);
   const wood = std(0x2c1a13, { roughness: 0.45 });
-  const glass = std(0x0b0c10, { roughness: 0.08, metalness: 0.6 });
-  const frosted = std(0x8d9296, { roughness: 0.9 });
+  // 白天：玻璃透進外面明亮的光（不受室內燈光影響，所以用不打光的材質）
+  const glass = new THREE.MeshBasicMaterial({ color: 0xf3ead6 });
+  const frosted = new THREE.MeshBasicMaterial({ color: 0xd9d4c8 });
   const fx1 = -1.8, fx2 = HW, topDoor = 2.08, topFrame = 2.62;
 
   // 門框以外的牆面（西側一小段、氣窗上方）
@@ -183,11 +184,29 @@ function buildWestWall(g) {
   fan.position.set(x + 0.3, 0, 1.0);
   cyl(fan, 0.2, 0.2, 0.04, white, 0, 0.02, 0);
   cyl(fan, 0.02, 0.02, 0.75, white, 0, 0.4, 0, 10);
+  // 風扇頭（會左右擺頭）與扇葉（會轉），動作在 life.js
+  const head = new THREE.Group();
+  head.name = 'fanHead';
+  head.position.y = 0.82;
+  fan.add(head);
   const cage = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.012, 8, 28), white);
-  cage.position.set(0.06, 0.82, 0); cage.rotation.y = Math.PI / 2; fan.add(cage);
+  cage.position.x = 0.06; cage.rotation.y = Math.PI / 2; head.add(cage);
   const disc = new THREE.Mesh(new THREE.CylinderGeometry(0.19, 0.19, 0.06, 24),
-    new THREE.MeshStandardMaterial({ color: 0xcfe6b8, transparent: true, opacity: 0.55 }));
-  disc.position.set(0.06, 0.82, 0); disc.rotation.z = Math.PI / 2; fan.add(disc);
+    new THREE.MeshStandardMaterial({ color: 0xcfe6b8, transparent: true, opacity: 0.3 }));
+  disc.position.x = 0.06; disc.rotation.z = Math.PI / 2; head.add(disc);
+  const blades = new THREE.Group();
+  blades.name = 'fanBlades';
+  blades.position.x = 0.05;
+  head.add(blades);
+  const bladeMat = std(0xb7d89c, { roughness: 0.4 });
+  for (let i = 0; i < 3; i++) {
+    const arm = new THREE.Group();
+    arm.rotation.x = i * Math.PI * 2 / 3;
+    box(arm, 0.01, 0.15, 0.08, bladeMat, 0, 0.09, 0).rotation.y = 0.35;
+    blades.add(arm);
+  }
+  cyl(blades, 0.03, 0.03, 0.03, white, 0.01, 0, 0).rotation.z = Math.PI / 2;   // 中心的蓋子
+  cyl(fan, 0.025, 0.025, 0.08, white, 0, 0.79, 0, 8);                           // 頸部
   g.add(fan);
   OBSTACLES.push([x + 0.1, x + 0.5, 0.8, 1.2]);
 

@@ -2,7 +2,8 @@ import { walkable, findPath, randomSpot, advance, heading, angleDiff } from './n
 
 // 寵物在整個屋子裡隨機走動：發呆幾秒 → 隨機挑一個走得到的地方 → 找路走過去 → 再發呆。
 // 每隻寵物：{ obj, r（身體半寬）, front（位置點到鼻子的距離）, speed, rest: [最短, 最長] 秒,
-//            turn（每秒最多轉幾弧度，預設 3）, free()：現在能不能自己亂走 }
+//            turn（每秒最多轉幾弧度，預設 3）, free()：現在能不能自己亂走,
+//            nap：{ chance, time: [最短, 最長] }（停下來時有這個機率睡比較久，obj.userData.nap 會是 true） }
 // player()：人現在的位置 { x, z, r }，沒有人在屋裡走（俯瞰）時回傳 null
 //
 // 不穿模的做法：
@@ -27,14 +28,21 @@ export function initWander(pets, player) {
     });
   }
 
-  const rest = p => p.rest[0] + Math.random() * (p.rest[1] - p.rest[0]);
+  const rest = p => {
+    if (p.nap && Math.random() < p.nap.chance) {          // 睡個午覺
+      p.obj.userData.nap = true;
+      return p.nap.time[0] + Math.random() * (p.nap.time[1] - p.nap.time[0]);
+    }
+    return p.rest[0] + Math.random() * (p.rest[1] - p.rest[0]);
+  };
 
   function update(dt, time) {
     for (const p of pets) {
       const o = p.obj;
-      if (!p.free()) { p.path = null; p.v = 0; p.wait = 1 + Math.random() * 2; continue; }
+      if (!p.free()) { p.path = null; p.v = 0; p.wait = 1 + Math.random() * 2; o.userData.nap = false; continue; }
       if (!p.path) {
         if ((p.wait -= dt) > 0) continue;
+        o.userData.nap = false;                 // 睡醒了
         const to = randomSpot(p.r);
         p.path = to ? findPath(o.position.x, o.position.z, to[0], to[1], p.r) : [];
         p.stuck = 0;
