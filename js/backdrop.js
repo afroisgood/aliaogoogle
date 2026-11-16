@@ -1,8 +1,11 @@
 import * as THREE from 'three';
 import { STYLE, SPACE, ROOMS, canvasTexture, speckle, std } from './kit.js';
+import { ROOM, CORRIDOR } from './livingroom.js';
+import { BATH } from './dogroom.js';
 
 // 屋子外面的樣子：
-// - 俯瞰：暖色的背景，屋子放在一塊草皮底座上（上面草綠、側面木頭色），像桌上的模型屋
+// - 俯瞰：暖色的背景，屋子放在一塊草皮底座上（上面草綠、側面木頭色），像桌上的模型屋；
+//   還沒做進來的書房、主臥室（走廊西側）維持黑色，不會露出草皮看起來像院子
 // - 人／狗／貓的視角：遠處漸漸融進暖色的霧（不是變黑），窗外和門外也是同一個顏色
 // 要在 relayout() 之後呼叫（地面的大小照屋子實際的範圍）。回傳 setView(name)，切換視角時呼叫。
 const SKY = '#f3e3cd';                 // 俯瞰背景：奶油色（漸層在像素風格裡會分成一圈圈色帶，所以用純色）
@@ -24,6 +27,20 @@ export function initBackdrop(scene) {
   base.position.set((x1 + x2) / 2, -0.01 - H / 2, (z1 + z2) / 2);
   base.raycast = () => {};
   scene.add(base);
+
+  // 書房、主臥室的位置鋪黑色（配置座標：客廳後面到狗房廁所，主臥室往後繞過廁所西側）
+  const dark = new THREE.MeshBasicMaterial({ color: 0x000000, fog: false });
+  const unbuilt = [
+    [-ROOM.W / 2, CORRIDOR.x1, BATH.zS, -ROOM.D / 2],
+    [-ROOM.W / 2, BATH.x1, BATH.zN, BATH.zS],
+  ];
+  for (const [a, b, c, e] of unbuilt) {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry((b - a) * SPACE, (e - c) * SPACE), dark);
+    m.rotation.x = -Math.PI / 2;
+    m.position.set((a + b) / 2 * SPACE, -0.005, (c + e) / 2 * SPACE).sub(base.position);   // 底座的子物件：跟著底座一起顯示／隱藏
+    m.raycast = () => {};
+    base.add(m);
+  }
 
   /* ----- 第一人稱的暖色霧 ----- */
   const fogColor = new THREE.Color(FOG);

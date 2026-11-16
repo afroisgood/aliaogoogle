@@ -232,7 +232,7 @@ h1, h2, b, strong { font-weight: 400; }
 .walk-nav button:disabled { opacity: .35; }
 .walk-nav .primary { background: #8a1c14; color: #fff; }
 
-#day-btn, #gallery-btn {
+#day-btn, #gallery-btn, #game-btn {
   font-size: 13px;
   padding: 3px 8px;
   background: #000;
@@ -395,7 +395,7 @@ button.primary { background: #8a1c14; color: #fff; }
 @media (max-width: 560px) {
   #topbar { gap: 1.2vw; padding-left: 2vw; padding-right: 2vw; }
   #topbar h1 { font-size: clamp(14px, 5vw, 26px); letter-spacing: 0; flex: 0 1 auto; min-width: 0; overflow: hidden; }
-  #room-name, #day-btn, #gallery-btn { font-size: clamp(10px, 3.2vw, 14px); padding: 3px 1.4vw; }
+  #room-name, #day-btn, #gallery-btn, #game-btn { font-size: clamp(10px, 3.2vw, 14px); padding: 3px 1.4vw; }
   #tasks-toggle { font-size: clamp(10px, 3.4vw, 15px); padding: 5px 2vw; }
   #topbar .arr { display: none; }
 }
@@ -489,4 +489,47 @@ button.primary { background: #8a1c14; color: #fff; }
 }
 @keyframes confetti-fall {
   to { transform: translate(var(--dx), 105vh) rotate(var(--rot)); }
+}
+
+/* ----- 小遊戲：巴福柔追貓（2D 俯瞰） ----- */
+#chase {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  background: #1d1a17;
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.chase-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  background: var(--metal);
+  border-bottom: 3px solid var(--metal-lo);
+}
+.chase-top > b { color: #ffd23c; font-size: 16px; white-space: nowrap; }
+.chase-hud { flex: 1; display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 13px; color: #e8e0d0; }
+.chase-close { padding: 5px 10px; font-size: 14px; }
+.chase-canvas { flex: 1; min-height: 0; width: 100%; image-rendering: pixelated; touch-action: none; }
+.chase-card {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(0, 0, 0, .5);
+}
+.chase-card.banner { background: none; pointer-events: none; }
+.chase-card b { color: #ffd23c; }
+.chase-banner {
+  padding: 10px 22px;
+  background: rgba(20, 16, 10, .9);
+  border: 3px solid #ffd23c;
+  box-shadow: 4px 4px 0 #000;
+  color: #ffd23c;
+  font-size: 22px;
 }

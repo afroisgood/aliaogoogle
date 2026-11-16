@@ -134,7 +134,9 @@ export function animatePet(o, dt, time) {
       bodyX = -0.2 * a.eat;
     }
     // 尾巴：走路時小幅擺動，停下來或吃飯時搖得比較開心
-    a.tail.rotation.z = Math.sin(t * (moving ? 7 : 9)) * (moving ? 0.2 : 0.45);
+    // 睡午覺（wander.js 設定 o.userData.nap）：慢慢趴下、頭靠在前腳上、尾巴幾乎不動
+    a.nap = lerp(a.nap || 0, o.userData.nap && !o.userData.pose ? 1 : 0, Math.min(1, dt * 1.5));
+    a.tail.rotation.z = Math.sin(t * (moving ? 7 : 9)) * (moving ? 0.2 : 0.45) * (1 - a.nap * 0.85);
     a.tail.rotation.x = 0.6 + Math.sin(a.phase) * 0.08 * m;
 
     // 任務完成時開心（feedback.js 設定 o.userData.cheer 秒數）：原地跳一跳、抬頭、尾巴猛搖
@@ -169,6 +171,13 @@ export function animatePet(o, dt, time) {
       bodyY -= 0.27 * q;
       for (const leg of a.legs) leg.rotation.x = lerp(leg.rotation.x, -1.45, q);
       headX = lerp(headX, -0.15, q);
+    }
+    if (a.nap > 0.01) {                // 睡午覺：和趴下一樣，再把頭放低、慢慢呼吸
+      const q = a.nap;
+      bodyY -= 0.27 * q - Math.sin(time * 1.6) * 0.006 * q;
+      for (const leg of a.legs) leg.rotation.x = lerp(leg.rotation.x, -1.45, q);
+      headX = lerp(headX, -0.5, q);
+      headY = lerp(headY, 0.25, q);
     }
     if (k.kick > 0.01) {               // 踹人：跳在半空中，身體仰起來，兩隻前腳往前踢出去，後腳往後拖
       const q = k.kick;
