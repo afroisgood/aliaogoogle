@@ -111,6 +111,7 @@ const SOUNDS = {
   relief: () => [523, 659, 784].forEach((f, i) => tone(f, 0.5, { type: 'triangle', vol: 0.12, at: i * 0.12, attack: 0.05 })),
   ouch: () => tone(340, 0.28, { vol: 0.12, to: 180 }),
   alarm: () => [0, 0.2, 0.4].forEach((at, i) => tone(i % 2 ? 660 : 880, 0.14, { vol: 0.1, at })),
+  snore: () => { noise(0.9, { type: 'lowpass', freq: 380, to: 220, vol: 0.22, attack: 0.35 }); noise(0.7, { type: 'lowpass', freq: 300, vol: 0.12, at: 1.1, attack: 0.3 }); },   // 打呼
   tv: () => { noise(0.2, { type: 'highpass', freq: 2000, vol: 0.15 }); tone(1000, 0.08, { type: 'sine', vol: 0.15, at: 0.2 }); },
 };
 
