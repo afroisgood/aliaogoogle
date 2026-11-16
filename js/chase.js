@@ -4,7 +4,8 @@ import { gridCanvas } from './pixelart.js';
 import { play, buzz } from './sound.js';
 
 // 小遊戲「巴福柔追貓」：2D 俯瞰。玩家是貓，把屋裡的小魚乾撿完就過關；巴福柔一直追，被追到就結束。
-// 貓鑽得過廚房柵欄，巴福柔過不去（會在門口等）。每一關小魚乾變多、巴福柔跑更快。
+// 貓鑽得過廚房柵欄，巴福柔過不去（會在門口等，等太久會睡著，貓可以趁機溜出去）。
+// 每一關小魚乾變多、巴福柔跑更快。
 //
 // 地圖直接用屋子的資料（kit.js 的 WALK 可走範圍、OBSTACLES 家具、ROOMS 房間），和 3D 版的格局一致。
 // 移動在 0.3 公尺的格子上：貓照玩家的方向一格一格走（可以先按好下一個轉彎），巴福柔每走到一格就重新找路追貓。
@@ -15,6 +16,9 @@ const PPM = PX / CELL;           // 每公尺幾個像素
 const MARGIN = 0.12;             // 格子中心離牆、離家具至少多遠才算走得過去
 const CAT_SPEED = 5.5;           // 格／秒
 const BEST_KEY = 'aliao-chase-best';
+const DOZE = 3;                  // 巴福柔在柵欄外等幾秒會睡著
+const NAP = 4.5;                 // 睡幾秒
+const WAKE = 0.5;                // 醒來後愣住幾秒才開始追
 
 /* ---------- 像素圖（頭朝上） ---------- */
 
@@ -47,6 +51,20 @@ const DOG = gridCanvas([
   '.k.....k.',
   '....k....',
   '....k....',
+], { k: '#17171b', g: '#4a4a56', r: '#d8452c' });
+
+// 睡著的巴福柔：捲成一團（頭朝上、尾巴繞到旁邊）
+const DOG_NAP = gridCanvas([
+  '..k...k..',
+  '.kkkkkkk.',
+  'kkkkkkkkk',
+  'kkgkkkgkk',
+  'kkkrrrkkk',
+  'kkkkkkkkk',
+  'kkkkkkkkk',
+  '.kkkkkkkk',
+  '..kkkkk.k',
+  '.......k.',
 ], { k: '#17171b', g: '#4a4a56', r: '#d8452c' });
 
 const FISH = gridCanvas([
@@ -152,7 +170,7 @@ export function initChase() {
       g.fillStyle = '#f4f4f2';
       for (let px = x; px < x + w; px += 2) g.fillRect(px, y, 1, Math.max(2, h));
     }
-    return { nx, nz, x0, z0, catOK, dogOK, catStart, dogStart, map };
+    return { nx, nz, x0, z0, catOK, dogOK, catStart, dogStart, map };   // dogReach 在下面算好（要用到 distances）
   }
 
   /* ---------- 遊戲狀態 ---------- */
@@ -198,7 +216,8 @@ export function initChase() {
     S = {
       level, score, phase: 'ready', t: 0,
       cat: { i: ci, j: cj, x: ci, y: cj, dir: [0, 0], want: [0, 0], face: 0 },
-      dog: { i: di, j: dj, x: di, y: dj, dir: [0, 0], face: 0, speed: Math.min(4.1 + (level - 1) * 0.3, 5.6), sniff: 0, bark: 2 },
+      dog: { i: di, j: dj, x: di, y: dj, dir: [0, 0], face: 0, speed: Math.min(4.1 + (level - 1) * 0.3, 5.6), sniff: 0, bark: 2,
+        wait: 0, nap: 0, wake: 0 },     // wait：在柵欄外等了幾秒；nap：還要睡幾秒；wake：醒來後還要愣幾秒
       fish: spots, total: spots.length,
     };
     render();
@@ -281,11 +300,25 @@ export function initChase() {
       play('pick');
       if (!S.fish.length) return levelClear();
     }
-    // 巴福柔
+    // 巴福柔：睡著 → 醒來愣一下 → 追
+    if (dog.nap > 0) {
+      if ((dog.nap -= dt) <= 0) { dog.wake = WAKE; play('woof'); }
+      return;                                             // 睡著時抓不到貓
+    }
+    if (dog.wake > 0) { dog.wake -= dt; return; }
     if (dog.sniff > 0) dog.sniff -= dt;
     else {
       step(dog, dog.speed, dt, dogChoose);
       dog.face = faceOf(dog.dir, dog.face);
+    }
+    // 貓躲在牠到不了的地方（廚房）、牠在門口停著等：等太久就睡著
+    const hiding = built.dogReach[idx(cat.i, cat.j)] < 0;
+    const idle = !dog.dir[0] && !dog.dir[1];
+    dog.wait = hiding && idle ? dog.wait + dt : 0;
+    if (dog.wait > DOZE) {
+      Object.assign(dog, { wait: 0, nap: NAP, sniff: 0 });
+      play('snore');
+      return;
     }
     const dist = Math.hypot(dog.x - cat.x, dog.y - cat.y);
     if ((dog.bark -= dt) <= 0 && dist < 6) { play('woof'); dog.bark = 3 + Math.random() * 3; }
@@ -349,11 +382,24 @@ export function initChase() {
     shadow(ox + px(cat.x), oy + px(cat.y), 6);
     sprite(CAT, ox + px(cat.x), oy + px(cat.y) - bob(cat), cat.face);
     shadow(ox + px(dog.x), oy + px(dog.y), 9);
-    sprite(DOG, ox + px(dog.x), oy + px(dog.y) - bob(dog), dog.face);
-    if (dog.sniff > 0) {                                              // 聞地板：頭上冒「？」
+    sprite(dog.nap > 0 ? DOG_NAP : DOG, ox + px(dog.x), oy + px(dog.y) - bob(dog), dog.face);
+    // 頭上的符號：聞地板「？」、睡著「Zzz」往上飄、剛醒來「！」
+    ctx.font = '8px "Cubic 11", sans-serif';
+    const hx = ox + px(dog.x) + 4, hy = oy + px(dog.y) - 6;
+    if (dog.nap > 0) {
+      ctx.fillStyle = '#e8f0ff';
+      for (let n = 0; n < 3; n++) {
+        const k = (time * 0.8 + n / 3) % 1;                          // 每個 z 從頭上往右上飄、慢慢變淡
+        ctx.globalAlpha = 1 - k;
+        ctx.fillText('z', Math.round(hx + k * 6), Math.round(hy - k * 10));
+      }
+      ctx.globalAlpha = 1;
+    } else if (dog.wake > 0) {
+      ctx.fillStyle = '#ff6a3c';
+      ctx.fillText('!', hx, hy);
+    } else if (dog.sniff > 0) {
       ctx.fillStyle = '#ffd23c';
-      ctx.font = '8px "Cubic 11", sans-serif';
-      ctx.fillText('?', ox + px(dog.x) + 4, oy + px(dog.y) - 6);
+      ctx.fillText('?', hx, hy);
     }
     // 巴福柔在畫面外：邊緣出現紅色箭頭指著牠的方向
     const dxs = ox + px(dog.x), dys = oy + px(dog.y);
@@ -369,7 +415,7 @@ export function initChase() {
     }
     // 巴福柔靠近時，畫面四周泛紅
     const near = Math.hypot(dog.x - cat.x, dog.y - cat.y);
-    if (S.phase === 'play' && near < 5) {
+    if (S.phase === 'play' && near < 5 && dog.nap <= 0) {
       ctx.fillStyle = `rgba(200,30,20,${(0.22 * (1 - near / 5)).toFixed(3)})`;
       ctx.fillRect(0, 0, vw, 3); ctx.fillRect(0, vh - 3, vw, 3); ctx.fillRect(0, 0, 3, vh); ctx.fillRect(vw - 3, 0, 3, vh);
     }
@@ -402,7 +448,7 @@ export function initChase() {
       show(`<h2>巴福柔追貓</h2>
         <p>你是貓。把屋裡的小魚乾全部撿完就過關。</p>
         <p>巴福柔會一直追你，被追到就結束。</p>
-        <p>貓鑽得過<b>廚房柵欄</b>，巴福柔過不去，躲進廚房可以喘口氣。</p>
+        <p>貓鑽得過<b>廚房柵欄</b>，巴福柔過不去。牠在門口等太久會<b>睡著</b>，趁牠睡覺溜出去！</p>
         <p class="card-tag">操作：手指在畫面上滑動改變方向；電腦用方向鍵或 WASD</p>`,
       [['開始', () => newLevel(1, 0)], ['離開', close]]);
     } else if (S.phase === 'ready') banner(`第 ${S.level} 關　準備！`);
@@ -461,7 +507,10 @@ export function initChase() {
 
   /* ---------- 開關 ---------- */
   function open() {
-    if (!built) built = build();
+    if (!built) {
+      built = build();
+      built.dogReach = distances(built.dogOK, built.dogStart);      // 巴福柔到得了的格子（廚房以外）
+    }
     root.innerHTML = `
       <div class="chase-top"><b>巴福柔追貓</b><div class="chase-hud"></div><button class="chase-close">✕ 離開</button></div>
       <canvas class="chase-canvas"></canvas>
