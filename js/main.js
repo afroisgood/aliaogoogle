@@ -23,6 +23,7 @@ import { initLeash } from './leash.js';
 import { initCompass } from './compass.js';
 import { initBackdrop } from './backdrop.js';
 import { buildDecor, initLife } from './life.js';
+import { initChase } from './chase.js';
 
 const canvas = document.getElementById('scene');
 const { renderer, resize: resizeRenderer, render } = createRenderer(canvas);
@@ -146,6 +147,8 @@ function goRoom(i) {
 }
 roomChip.addEventListener('click', () => goRoom(focus + 1));
 document.getElementById('gallery-btn').addEventListener('click', openGallery);   // 隨時看散步指引圖集
+const chase = initChase();                                                        // 小遊戲：巴福柔追貓
+document.getElementById('game-btn').addEventListener('click', () => chase.open());
 
 const currentRoomName = () => (mode === 'overview' ? stops[focus].name : roomAt(fp.x, fp.z));
 
@@ -303,6 +306,7 @@ const clock = new THREE.Clock();
 let lastRoom = '';
 function frame() {
   const dt = Math.min(clock.getDelta(), 0.05);
+  if (chase.isOpen()) { requestAnimationFrame(frame); return; }   // 玩小遊戲時屋子先暫停
   if (mode === 'overview') {
     const { theta, phi, r, target } = orbit;
     // 直式螢幕拉遠一點，讓整個客廳都看得到
@@ -370,4 +374,4 @@ setView('human');      // 一打開就是人的視角，從大門進來
 frame();
 
 // 方便除錯與之後擴充
-window.__app = { setView, goRoom, fp, orbit, camera, mission, clean, feed, litter, catFeed, gate, play, tv, dog, cat, kitten };
+window.__app = { setView, goRoom, fp, orbit, camera, mission, clean, feed, litter, catFeed, gate, play, tv, dog, cat, kitten, chase };
